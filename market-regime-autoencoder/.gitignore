@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+outputs/*.csv
+outputs/course_check/
+outputs/handoff_check/
+data/processed/*.csv
+!data/processed/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
