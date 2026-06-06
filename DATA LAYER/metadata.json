@@ -1,0 +1,66 @@
+{
+  "frequency": "weekly (7-day)",
+  "date_start": "1988-04-17",
+  "date_end": "2026-05-03",
+  "seed": 42,
+  "dtype": "float32",
+  "split": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "split_boundaries_dates": {
+    "train": [
+      "1988-04-17",
+      "2014-11-30"
+    ],
+    "val": [
+      "2014-12-07",
+      "2020-08-16"
+    ],
+    "test": [
+      "2020-08-23",
+      "2026-05-03"
+    ]
+  },
+  "window": {
+    "size": 26,
+    "stride": 1,
+    "type": "sliding/overlapping",
+    "autoencoder_target": "input window itself"
+  },
+  "shapes": {
+    "splits": {
+      "train": [
+        1390,
+        30
+      ],
+      "val": [
+        298,
+        30
+      ],
+      "test": [
+        298,
+        30
+      ]
+    },
+    "windows": {
+      "train": [
+        1365,
+        26,
+        30
+      ],
+      "val": [
+        273,
+        26,
+        30
+      ],
+      "test": [
+        273,
+        26,
+        30
+      ]
+    }
+  },
+  "scaler": "StandardScaler, fit on TRAIN only"
+}
