@@ -160,7 +160,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--latent-dim", type=int, default=TrainingConfig.latent_dim)
     parser.add_argument("--clusters", type=int, default=TrainingConfig.clusters)
     parser.add_argument("--learning-rate", type=float, default=TrainingConfig.learning_rate)
-    parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--weight-decay", type=float, default=5e-4)
     parser.add_argument("--early-stopping-patience", type=int, default=40)
     parser.add_argument("--random-state", type=int, default=TrainingConfig.random_state)
     return parser.parse_args()

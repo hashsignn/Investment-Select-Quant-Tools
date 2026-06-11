@@ -47,18 +47,18 @@ market-regime-autoencoder/outputs/handoff/split_reconstruction_loss.csv
 Current reconstruction losses:
 
 ```text
-train = 0.353103
-val   = 0.660328
-test  = 1.711472
+train = 0.363349
+val   = 0.634908
+test  = 1.703483
 ```
 
 Current regime counts:
 
 ```text
-regime 0 = 370
-regime 1 = 222
-regime 2 = 446
-regime 3 = 873
+regime 0 = 402
+regime 1 = 212
+regime 2 = 422
+regime 3 = 875
 ```
 
 The test reconstruction loss is higher because the test period is the most recent sample, including 2020-2026 market conditions. This should be discussed as a possible regime shift rather than treated as classification accuracy.
@@ -75,7 +75,7 @@ The model is a fully connected autoencoder implemented in PyTorch:
 - optimizer: Adam,
 - maximum epochs for the handoff run: 200,
 - model selection: best validation-loss epoch with early stopping,
-- regularization: Adam weight decay of `1e-4`,
+- regularization: Adam weight decay of `5e-4`,
 - clustering: KMeans with 4 regimes.
 
 KMeans is fitted only on the training latent vectors and then used to assign regimes to validation and test. This avoids using validation/test data to define the clusters.
