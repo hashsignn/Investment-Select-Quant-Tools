@@ -9,6 +9,77 @@ This project covers Person 2's part of the assignment:
 
 The pipeline is intentionally independent from the final OLAT dataset. Until Person 1 provides the cleaned dataset, use the synthetic sample data generator.
 
+## For PCA / Visualization Person
+
+Use this file for downstream analysis:
+
+```text
+market-regime-autoencoder/outputs/handoff/clustered_regimes.csv
+```
+
+It contains:
+
+```text
+split,window_index,date,z1,z2,z3,regime
+```
+
+Column meanings:
+
+- `split`: original time split from the data handoff (`train`, `val`, `test`),
+- `window_index`: index of the 26-week window inside its split,
+- `date`: end date of the 26-week window,
+- `z1`, `z2`, `z3`: 3-dimensional autoencoder latent representation,
+- `regime`: KMeans regime label assigned from the latent space.
+
+If only the latent representation is needed, use:
+
+```text
+market-regime-autoencoder/outputs/handoff/latent_space.csv
+```
+
+Diagnostics:
+
+```text
+market-regime-autoencoder/outputs/handoff/training_loss.csv
+market-regime-autoencoder/outputs/handoff/split_reconstruction_loss.csv
+```
+
+Current reconstruction losses:
+
+```text
+train = 0.303963
+val   = 0.740598
+test  = 1.834218
+```
+
+Current regime counts:
+
+```text
+regime 0 = 419
+regime 1 = 183
+regime 2 = 439
+regime 3 = 870
+```
+
+The test reconstruction loss is higher because the test period is the most recent sample, including 2020-2026 market conditions. This should be discussed as a possible regime shift rather than treated as classification accuracy.
+
+## Model Used
+
+The model is a fully connected autoencoder implemented in PyTorch:
+
+- input: one flattened 26-week window with 30 features, so `26 x 30 = 780` inputs,
+- encoder: `Linear(780, 64) -> ReLU -> Linear(64, 3)`,
+- latent space: 3 dimensions, `z1`, `z2`, `z3`,
+- decoder: `Linear(3, 64) -> ReLU -> Linear(64, 780)`,
+- objective: mean squared reconstruction error,
+- optimizer: Adam,
+- epochs used for the handoff run: 200,
+- clustering: KMeans with 4 regimes.
+
+KMeans is fitted only on the training latent vectors and then used to assign regimes to validation and test. This avoids using validation/test data to define the clusters.
+
+We use a 3-dimensional latent space because it remains interpretable and visualizable while allowing the model to capture richer market dynamics than a 2-dimensional representation. The root data README mentions 8-16 dimensions as a sensible reconstruction-oriented range, but this project intentionally uses 3 dimensions for interpretability and comparison with PCA visualizations.
+
 ## Expected Data Contract
 
 Person 1 should provide a CSV in `data/processed/` with this shape:
@@ -41,7 +112,7 @@ Examples of useful features:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install -e .
+pip install -e . --no-build-isolation
 ```
 
 ## Quick Run With Synthetic Data
@@ -82,6 +153,14 @@ This uses the already preprocessed 26-week windows:
 - train: used for fitting the autoencoder,
 - validation/test: used only for reconstruction diagnostics and latent/regime extraction,
 - output: `latent_space.csv`, `clustered_regimes.csv`, `training_loss.csv`, `split_reconstruction_loss.csv`.
+
+Expected terminal output shape summary:
+
+```text
+Trained on handoff train windows: (1365, 780)
+Validation windows: (273, 780)
+Test windows: (273, 780)
+```
 
 ## Convert The Course Excel File
 

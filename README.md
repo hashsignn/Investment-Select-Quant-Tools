@@ -77,3 +77,36 @@ windows:  train (1365,26,30) val (273,26,30) test (273,26,30)
 - **Noise control is your side now**: bottleneck size + regularization (dropout / weight decay / early stopping) are what stop the AE from fitting noise. Returns + windowing already removed the trend/jitter from the inputs.
 - A 10-component PCA on the train windows reconstructs ~67% of variance, so the data carries compressible structure. good sign for both the AE and PCA regime work.
 - To re-generate from scratch: `python pipeline.py` (needs `market_data.xlsx`), then `python test_handoff.py`.
+
+## Autoencoder Regime Outputs
+
+Person 2's autoencoder and regime-clustering pipeline is in:
+
+```text
+market-regime-autoencoder/
+```
+
+Main downstream file for PCA comparison, visualizations, and economic regime interpretation:
+
+```text
+market-regime-autoencoder/outputs/handoff/clustered_regimes.csv
+```
+
+It contains:
+
+```text
+split,window_index,date,z1,z2,z3,regime
+```
+
+The model uses a 3-dimensional PyTorch autoencoder latent space (`z1`, `z2`, `z3`) and KMeans with 4 regimes. KMeans is fitted only on the training latent vectors, then applied to validation and test.
+
+To reproduce the autoencoder outputs:
+
+```bash
+cd market-regime-autoencoder
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e . --no-build-isolation
+python -m ae_regimes.train_handoff --handoff-dir "../DATA LAYER" --epochs 200 --clusters 4 --output-dir outputs/handoff
+```
