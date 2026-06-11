@@ -98,7 +98,7 @@ It contains:
 split,window_index,date,z1,z2,z3,regime
 ```
 
-The model uses a 3-dimensional PyTorch autoencoder latent space (`z1`, `z2`, `z3`) and KMeans with 4 regimes. KMeans is fitted only on the training latent vectors, then applied to validation and test.
+The model uses a 3-dimensional PyTorch autoencoder latent space (`z1`, `z2`, `z3`) and KMeans with 4 regimes. The autoencoder checkpoint is selected using validation loss with early stopping. KMeans is fitted only on the training latent vectors, then applied to validation and test.
 
 To reproduce the autoencoder outputs:
 
@@ -108,5 +108,5 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e . --no-build-isolation
-python -m ae_regimes.train_handoff --handoff-dir "../DATA LAYER" --epochs 200 --clusters 4 --output-dir outputs/handoff
+python -m ae_regimes.train_handoff --handoff-dir "../DATA LAYER" --epochs 200 --early-stopping-patience 40 --clusters 4 --output-dir outputs/handoff
 ```

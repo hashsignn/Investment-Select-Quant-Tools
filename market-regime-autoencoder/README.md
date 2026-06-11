@@ -47,18 +47,18 @@ market-regime-autoencoder/outputs/handoff/split_reconstruction_loss.csv
 Current reconstruction losses:
 
 ```text
-train = 0.303963
-val   = 0.740598
-test  = 1.834218
+train = 0.353103
+val   = 0.660328
+test  = 1.711472
 ```
 
 Current regime counts:
 
 ```text
-regime 0 = 419
-regime 1 = 183
-regime 2 = 439
-regime 3 = 870
+regime 0 = 370
+regime 1 = 222
+regime 2 = 446
+regime 3 = 873
 ```
 
 The test reconstruction loss is higher because the test period is the most recent sample, including 2020-2026 market conditions. This should be discussed as a possible regime shift rather than treated as classification accuracy.
@@ -73,7 +73,9 @@ The model is a fully connected autoencoder implemented in PyTorch:
 - decoder: `Linear(3, 64) -> ReLU -> Linear(64, 780)`,
 - objective: mean squared reconstruction error,
 - optimizer: Adam,
-- epochs used for the handoff run: 200,
+- maximum epochs for the handoff run: 200,
+- model selection: best validation-loss epoch with early stopping,
+- regularization: Adam weight decay of `1e-4`,
 - clustering: KMeans with 4 regimes.
 
 KMeans is fitted only on the training latent vectors and then used to assign regimes to validation and test. This avoids using validation/test data to define the clusters.
@@ -144,6 +146,7 @@ If Person 1 provides the data layer files `windows.npz`, `splits.npz`, `schema.j
 python -m ae_regimes.train_handoff \
   --handoff-dir "../DATA LAYER" \
   --epochs 200 \
+  --early-stopping-patience 40 \
   --clusters 4 \
   --output-dir outputs/handoff
 ```

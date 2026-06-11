@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 
 def latent_columns(latent_df: pd.DataFrame) -> list[str]:
@@ -18,9 +19,11 @@ def cluster_latent_space(
 ) -> pd.DataFrame:
     latent_cols = latent_columns(latent_df)
 
+    scaler = StandardScaler()
+    scaled_latent = scaler.fit_transform(latent_df[latent_cols])
     model = KMeans(n_clusters=clusters, n_init="auto", random_state=random_state)
     result = latent_df.copy()
-    result["regime"] = model.fit_predict(result[latent_cols])
+    result["regime"] = model.fit_predict(scaled_latent)
     return result
 
 
@@ -39,9 +42,13 @@ def cluster_from_train_split(
         raise ValueError(f"No rows found for train split value: {train_value}")
 
     latent_cols = latent_columns(latent_df)
+    scaler = StandardScaler()
+    train_scaled = scaler.fit_transform(latent_df.loc[train_mask, latent_cols])
+    all_scaled = scaler.transform(latent_df[latent_cols])
+
     model = KMeans(n_clusters=clusters, n_init="auto", random_state=random_state)
-    model.fit(latent_df.loc[train_mask, latent_cols])
+    model.fit(train_scaled)
 
     result = latent_df.copy()
-    result["regime"] = model.predict(result[latent_cols])
+    result["regime"] = model.predict(all_scaled)
     return result

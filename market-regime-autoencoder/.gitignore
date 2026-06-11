@@ -6,6 +6,7 @@ __pycache__/
 outputs/*.csv
 outputs/course_check/
 outputs/handoff_check/
+outputs/handoff_improved/
 data/processed/*.csv
 !data/processed/.gitkeep
 data/raw/*
