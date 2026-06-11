@@ -80,7 +80,7 @@ windows:  train (1365,26,30) val (273,26,30) test (273,26,30)
 
 ## Autoencoder Regime Outputs
 
-Person 2's autoencoder and regime-clustering pipeline is in:
+Eleni's autoencoder and regime-clustering pipeline is in:
 
 ```text
 market-regime-autoencoder/
