@@ -110,3 +110,82 @@ pip install -r requirements.txt
 pip install -e . --no-build-isolation
 python -m ae_regimes.train_handoff --handoff-dir "../DATA LAYER" --epochs 200 --early-stopping-patience 40 --clusters 4 --output-dir outputs/handoff
 ```
+## PCA Regime Outputs
+
+PCA implementation, comparison with the autoencoder, visualizations, and economic regime interpretation are in:
+
+```text
+pca-regime-analysis/
+```
+
+Main output file, merged with the autoencoder for direct comparison:
+
+```text
+pca-regime-analysis/outputs/pca_ae_comparison.csv
+```
+
+It contains:
+
+```text
+split,date,pc1,pc2,pc3,pca_regime,z1,z2,z3,ae_regime
+```
+
+If only the PCA latent representation is needed, use:
+
+```text
+pca-regime-analysis/outputs/pca_latent_space.csv
+pca-regime-analysis/outputs/pca_clustered_regimes.csv
+```
+
+The model uses a 3-component PCA fit on the training windows only (`pc1`, `pc2`, `pc3`), matching the autoencoder's latent dimensionality for a fair comparison, and KMeans with 4 regimes fitted on the training PCA projections, then applied to validation and test.
+
+Agreement between PCA and autoencoder regimes is measured with Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI), both computed on the merged comparison set.
+
+Figures (saved to `pca-regime-analysis/outputs/figures/`):
+
+```text
+01_scree_plot.png
+02_pca_2d_regimes.png
+03_ae_2d_regimes.png
+04_pca_vs_ae_3d.png
+05_regime_timeline.png
+06_regime_feature_profiles.png
+07_regime_agreement_heatmap.png
+08_reconstruction_loss_vs_pca_variance.png
+```
+
+To reproduce the PCA outputs:
+
+```bash
+cd pca-regime-analysis
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python pca_analysis.py
+```
+
+This expects `../DATA LAYER/windows.npz` and `../market-regime-autoencoder/outputs/handoff/clustered_regimes.csv` to already exist, so run the data pipeline and the autoencoder handoff first.
+
+## PCA vs. Autoencoder Agreement
+
+3 principal components explain 49.7% of variance (10 components: 67.2%, 20: 72.7%, 50: 82.4%), so a 3-D linear PCA discards more than half the variance the 30 features carry. The autoencoder's non-linear bottleneck is compressing into the same 3 dimensions but can capture structure PCA cannot.
+
+```text
+Adjusted Rand Index (ARI):        0.448   (1 = perfect, 0 = random)
+Normalized Mutual Info (NMI):     0.548   (1 = perfect, 0 = none)
+```
+
+This is moderate agreement: the two methods share some regime structure but disagree on boundary placement, consistent with the AE's non-linear capacity picking up patterns linear PCA misses.
+
+## Regime Interpretation (train set, PCA + KMeans)
+
+Labels are derived from the dominant standardised features per regime (`build_interpretation()` in `pca_analysis.py`) and should be validated against domain knowledge before being treated as final.
+
+| Regime | Windows (train) | Dominant features | Suggested label |
+|---|---|---|---|
+| 0 | 378 (27.7%) | CPI +1.24, dividend yield +1.18, 10Y yield +1.12 | inflationary pressure, rising long rates |
+| 1 | 368 (27.0%) | 2Y yield −1.17, short rate −1.15, 10Y yield −1.10 | low volatility, falling long rates |
+| 2 | 460 (33.7%) | CAPE +1.08, employment +0.96, real rate +0.91 | mixed / transitional |
+| 3 | 159 (11.6%) | unemployment +1.99, yield-spread stress +1.97, GDP −1.62 | high volatility, elevated unemployment, falling long rates |
+
+Regime 3 is the smallest and most distinct (highest unemployment, lowest GDP, highest volatility), and is the most useful candidate for a "crisis" label, pending cross-check against known recession dates. Regime 2 is the largest and most diffuse, consistent with a "normal market" baseline rather than a sharply defined state.
