@@ -189,3 +189,72 @@ Labels are derived from the dominant standardised features per regime (`build_in
 | 3 | 159 (11.6%) | unemployment +1.99, yield-spread stress +1.97, GDP −1.62 | high volatility, elevated unemployment, falling long rates |
 
 Regime 3 is the smallest and most distinct (highest unemployment, lowest GDP, highest volatility), and is the most useful candidate for a "crisis" label, pending cross-check against known recession dates. Regime 2 is the largest and most diffuse, consistent with a "normal market" baseline rather than a sharply defined state.
+
+## Regime-Conditioned Trading Strategy
+
+To test whether the regimes carry economic value rather than just descriptive structure, we built a minimal regime-conditioned long/short rule and backtested it strictly out of sample.
+
+**How it's built:**
+1. For every window, compute the realized one-week-forward return of `_MKT` (the market factor). Since windows slide one week at a time, window `i`'s forward return is just the new week added in window `i+1` — `windows[i+1][-1, mkt_idx]`.
+2. Using **train only**, compute the average forward return per autoencoder regime (Table below), rank the regimes, and assign a fixed position: long the best regime, short the worst, flat the middle two.
+3. Freeze that position map and apply it unchanged to validation and test. No out-of-sample information touches the rule.
+
+```text
+Regime   Mean forward return (train)   Position
+1        +0.074                        Long (+1)
+2        +0.034                        Flat (0)
+0        +0.001                        Flat (0)
+3        −0.057                        Short (−1)
+```
+
+**Backtest results (Sharpe annualized, weekly returns, √52 scaling; IC = Spearman rank correlation between position and realized forward return):**
+
+```text
+Split               Strategy Sharpe   Buy-and-hold Sharpe   IC
+Train (in-sample)   0.29              0.00                  0.05
+Validation (OOS)    0.15              -0.02                 0.10
+Test (OOS)          -0.24             0.07                  -0.04
+```
+
+**Verdict:** the strategy is profitable and economically coherent in sample (the regime with elevated unemployment and volatility precedes the lowest forward returns, the low-volatility regime precedes the highest), but it does **not** generalize: on test it loses to a flat buy-and-hold benchmark, and IC drops to indistinguishable from zero. This tracks the same generalization gap seen elsewhere in this README — the validation-period regime collapse and the elevated test reconstruction loss both point to the same three-dimensional bottleneck struggling outside the training period. We would not recommend this as a stand-alone investment signal in its current form.
+
+**Caveat on units:** Sharpe and IC above are computed on the *standardized* `_MKT` values (the StandardScaler-transformed log-return, not the raw percentage return), since reproducing this analysis from scratch without `scaler.pkl` doesn't give back the original scale. IC and the sign/ranking-based comparisons are unaffected by this, but if you want Sharpe in actual percentage-return terms, inverse-transform `_MKT` with `scaler.pkl` first.
+
+To reproduce:
+
+```python
+import numpy as np, json, pandas as pd
+from scipy.stats import spearmanr
+
+windows = np.load("DATA LAYER/windows.npz")
+feat = json.load(open("DATA LAYER/schema.json"))["feature_order"]
+mkt_idx = feat.index("_MKT")
+
+ae_df = pd.read_csv("market-regime-autoencoder/outputs/handoff/clustered_regimes.csv", parse_dates=["date"])
+
+results = []
+for split in ["train", "val", "test"]:
+    w = windows[split][:, :, mkt_idx]
+    n = w.shape[0]
+    fwd_1w = np.full(n, np.nan)
+    fwd_1w[:-1] = w[1:, -1]
+    sub = ae_df[ae_df["split"] == split].reset_index(drop=True)
+    sub["fwd_return_1w"] = fwd_1w
+    results.append(sub)
+full = pd.concat(results, ignore_index=True)
+
+# derive position rule from train only, then apply out of sample
+train = full[full["split"] == "train"].dropna(subset=["fwd_return_1w"])
+ranked = train.groupby("regime")["fwd_return_1w"].mean().sort_values(ascending=False)
+position_map = {ranked.index[0]: 1, ranked.index[-1]: -1}
+for r in ranked.index[1:-1]:
+    position_map[r] = 0
+
+for split in ["train", "val", "test"]:
+    sub = full[full["split"] == split].dropna(subset=["fwd_return_1w"]).copy()
+    sub["position"] = sub["regime"].map(position_map)
+    pnl = sub["position"] * sub["fwd_return_1w"]
+    sharpe = pnl.mean() / pnl.std() * np.sqrt(52)
+    ic, _ = spearmanr(sub["position"], sub["fwd_return_1w"])
+    print(split, "Sharpe:", round(sharpe, 3), "IC:", round(ic, 3))
+```
