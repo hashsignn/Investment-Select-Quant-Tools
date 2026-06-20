@@ -1,0 +1,55 @@
+.
+├── DATA LAYER
+│   ├── market_data.xlsx
+│   ├── metadata.json
+│   ├── pipeline.py
+│   ├── python_test_handoff.py
+│   ├── scaler.pkl
+│   ├── schema.json
+│   ├── splits.npz
+│   └── windows.npz
+├── README.md
+├── market-regime-autoencoder
+│   ├── README.md
+│   ├── data
+│   │   ├── processed
+│   │   └── raw
+│   ├── outputs
+│   │   └── handoff
+│   │       ├── clustered_regimes.csv
+│   │       ├── latent_space.csv
+│   │       ├── split_reconstruction_loss.csv
+│   │       └── training_loss.csv
+│   ├── pyproject.toml
+│   ├── requirements.txt
+│   ├── scripts
+│   │   ├── make_sample_data.py
+│   │   └── prepare_course_market_data.py
+│   ├── setup.py
+│   └── src
+│       └── ae_regimes
+│           ├── __init__.py
+│           ├── clustering.py
+│           ├── config.py
+│           ├── data.py
+│           ├── model.py
+│           ├── train.py
+│           └── train_handoff.py
+├── pca-regime-analysis
+│   ├── outputs
+│   │   ├── figures
+│   │   │   ├── 01_scree_plot.png
+│   │   │   ├── 02_pca_2d_regimes.png
+│   │   │   ├── 03_ae_2d_regimes.png
+│   │   │   ├── 04_pca_vs_ae_3d.png
+│   │   │   ├── 05_regime_timeline.png
+│   │   │   ├── 06_regime_feature_profiles.png
+│   │   │   ├── 07_regime_agreement_heatmap.png
+│   │   │   └── 08_reconstruction_loss_vs_pca_variance.png
+│   │   ├── pca_ae_comparison.csv
+│   │   ├── pca_clustered_regimes.csv
+│   │   └── pca_latent_space.csv
+│   └── pca_analysis.py
+└── project_tree.txt
+
+14 directories, 39 files
