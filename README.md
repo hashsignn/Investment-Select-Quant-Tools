@@ -95,10 +95,10 @@ market-regime-autoencoder/outputs/handoff/clustered_regimes.csv
 It contains:
 
 ```text
-split,window_index,date,z1,z2,z3,regime
+split,window_index,date,z1,z2,...,z16,regime
 ```
 
-The model uses a 3-dimensional PyTorch autoencoder latent space (`z1`, `z2`, `z3`) and KMeans with 4 regimes. The autoencoder checkpoint is selected using validation loss with early stopping. KMeans is fitted only on the training latent vectors, then applied to validation and test.
+The model uses a 16-dimensional PyTorch autoencoder latent space (`z1` through `z16`) and KMeans with 4 regimes. The autoencoder checkpoint is selected using validation loss with early stopping. KMeans is fitted only on the training latent vectors, then applied to validation and test.
 
 To reproduce the autoencoder outputs:
 
@@ -127,7 +127,7 @@ pca-regime-analysis/outputs/pca_ae_comparison.csv
 It contains:
 
 ```text
-split,date,pc1,pc2,pc3,pca_regime,z1,z2,z3,ae_regime
+split,date,pc1,...,pc16,pca_regime,z1,...,z16,ae_regime
 ```
 
 If only the PCA latent representation is needed, use:
@@ -137,7 +137,7 @@ pca-regime-analysis/outputs/pca_latent_space.csv
 pca-regime-analysis/outputs/pca_clustered_regimes.csv
 ```
 
-The model uses a 3-component PCA fit on the training windows only (`pc1`, `pc2`, `pc3`), matching the autoencoder's latent dimensionality for a fair comparison, and KMeans with 4 regimes fitted on the training PCA projections, then applied to validation and test.
+The model uses a 16-component PCA fit on the training windows only (`pc1` through `pc16`), matching the autoencoder's latent dimensionality for a fair comparison, and KMeans with 4 regimes fitted on the training PCA projections, then applied to validation and test.
 
 Agreement between PCA and autoencoder regimes is measured with Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI), both computed on the merged comparison set.
 
@@ -168,11 +168,11 @@ This expects `../DATA LAYER/windows.npz` and `../market-regime-autoencoder/outpu
 
 ## PCA vs. Autoencoder Agreement
 
-3 principal components explain 49.7% of variance (10 components: 67.2%, 20: 72.7%, 50: 82.4%), so a 3-D linear PCA discards more than half the variance the 30 features carry. The autoencoder's non-linear bottleneck is compressing into the same 3 dimensions but can capture structure PCA cannot.
+16 principal components explain over 70% of the variance (10 components: 67.2%, 20: 72.7%, 50: 82.4%), meaning the 16-D linear PCA captures a substantial portion of the variance the 30 features carry. The autoencoder's non-linear bottleneck is compressing into the same 16 dimensions, allowing a fair comparison between linear and non-linear representations without the severe mode collapse seen in narrower (e.g. 3-D) architectures.
 
 ```text
-Adjusted Rand Index (ARI):        0.448   (1 = perfect, 0 = random)
-Normalized Mutual Info (NMI):     0.548   (1 = perfect, 0 = none)
+Adjusted Rand Index (ARI):        0.515   (1 = perfect, 0 = random)
+Normalized Mutual Information:    0.577   (1 = perfect, 0 = random)
 ```
 
 This is moderate agreement: the two methods share some regime structure but disagree on boundary placement, consistent with the AE's non-linear capacity picking up patterns linear PCA misses.
@@ -181,14 +181,14 @@ This is moderate agreement: the two methods share some regime structure but disa
 
 Labels are derived from the dominant standardised features per regime (`build_interpretation()` in `pca_analysis.py`) and should be validated against domain knowledge before being treated as final.
 
-| Regime | Windows (train) | Dominant features | Suggested label |
-|---|---|---|---|
-| 0 | 378 (27.7%) | CPI +1.24, dividend yield +1.18, 10Y yield +1.12 | inflationary pressure, rising long rates |
-| 1 | 368 (27.0%) | 2Y yield −1.17, short rate −1.15, 10Y yield −1.10 | low volatility, falling long rates |
-| 2 | 460 (33.7%) | CAPE +1.08, employment +0.96, real rate +0.91 | mixed / transitional |
-| 3 | 159 (11.6%) | unemployment +1.99, yield-spread stress +1.97, GDP −1.62 | high volatility, elevated unemployment, falling long rates |
+| Regime | Size | Top 3 defining features | Interpretation |
+| :--- | :--- | :--- | :--- |
+| 0 | 363 (26.6%) | 2Y yield −1.17, short rate −1.15, 10Y yield −1.11 | low volatility, falling long rates |
+| 1 | 464 (34.0%) | CAPE +1.08, employment +0.97, real rate +0.91 | mixed / transitional |
+| 2 | 373 (27.3%) | CPI +1.25, dividend yield +1.19, 10Y yield +1.13 | inflationary pressure, rising long rates |
+| 3 | 165 (12.1%) | yield-spread stress +1.94, unemployment +1.93, GDP −1.58 | high volatility, elevated unemployment, falling long rates |
 
-Regime 3 is the smallest and most distinct (highest unemployment, lowest GDP, highest volatility), and is the most useful candidate for a "crisis" label, pending cross-check against known recession dates. Regime 2 is the largest and most diffuse, consistent with a "normal market" baseline rather than a sharply defined state.
+Regime 3 is the smallest and most distinct (highest unemployment, lowest GDP, highest volatility), and is the most useful candidate for a "crisis" label, pending cross-check against known recession dates. Regime 1 is the largest and most diffuse, consistent with a "normal market" baseline rather than a sharply defined state.
 
 ## Regime-Conditioned Trading Strategy
 

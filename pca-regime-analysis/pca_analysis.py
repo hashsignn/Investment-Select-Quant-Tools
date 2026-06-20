@@ -11,7 +11,7 @@ Inputs  (from DATA LAYER + market-regime-autoencoder/outputs/handoff/):
   - ../market-regime-autoencoder/outputs/handoff/latent_space.csv
 
 Outputs (saved to outputs/):
-  - pca_latent_space.csv               — 3-component PCA projections
+  - pca_latent_space.csv               — 16-component PCA projections
   - pca_clustered_regimes.csv          — PCA + KMeans regime labels
   - pca_ae_comparison.csv              — merged PCA & AE regimes for all windows
   - figures/01_scree_plot.png
@@ -38,6 +38,11 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.manifold import TSNE
+
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import config
 
 warnings.filterwarnings("ignore")
 
@@ -60,9 +65,9 @@ plt.rcParams.update({
     "font.size": 11,
 })
 
-N_COMPONENTS_3 = 3    # match AE latent dimensionality
-N_CLUSTERS = 4        # match AE clustering
-RANDOM_STATE = 42
+N_COMPONENTS_3 = config.LATENT_DIM    # match AE latent dimensionality
+N_CLUSTERS = config.N_CLUSTERS        # match AE clustering
+RANDOM_STATE = config.RANDOM_SEED
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -112,7 +117,7 @@ def fit_pca(splits):
     full_pca = PCA(random_state=RANDOM_STATE)
     full_pca.fit(X_train)
 
-    # 3-component PCA for comparison with AE
+    # 16-component PCA for comparison with AE
     pca_3 = PCA(n_components=N_COMPONENTS_3, random_state=RANDOM_STATE)
     pca_3.fit(X_train)
 
@@ -150,20 +155,26 @@ def build_dataframes(projections, labels, dates):
         L = labels[split]
         D = dates[split]
         for i, (z, l, d) in enumerate(zip(Z, L, D)):
-            rows.append({
+            row = {
                 "split": split,
                 "window_index": i,
                 "date": d,
-                "pc1": z[0], "pc2": z[1], "pc3": z[2],
                 "regime": int(l),
-            })
+            }
+            for j in range(N_COMPONENTS_3):
+                row[f"pc{j+1}"] = z[j]
+            rows.append(row)
     return pd.DataFrame(rows)
 
 
 def merge_with_ae(pca_df, ae_df):
-    merged = pca_df[["split", "date", "pc1", "pc2", "pc3", "regime"]].copy()
+    pc_cols = [f"pc{i+1}" for i in range(N_COMPONENTS_3)]
+    z_cols = [f"z{i+1}" for i in range(N_COMPONENTS_3)]
+    
+    merged = pca_df[["split", "date"] + pc_cols + ["regime"]].copy()
     merged = merged.rename(columns={"regime": "pca_regime"})
-    ae_cols = ae_df[["date", "z1", "z2", "z3", "regime"]].rename(
+    
+    ae_cols = ae_df[["date"] + z_cols + ["regime"]].rename(
         columns={"regime": "ae_regime"}
     )
     merged = merged.merge(ae_cols, on="date", how="inner")
@@ -200,7 +211,7 @@ def fig_scree(full_pca):
         ax.axhline(thresh * 100, color="grey", linestyle=style, alpha=0.6,
                    label=f"{int(thresh*100)}% @ PC{idx+1}")
     ax.axvline(N_COMPONENTS_3, color="#4CAF50", linewidth=2,
-               label=f"3-PC AE match ({cumulative[2]*100:.1f}%)")
+               label=f"{N_COMPONENTS_3}-PC AE match ({cumulative[N_COMPONENTS_3-1]*100:.1f}%)")
     ax.set_xlabel("Number of Principal Components")
     ax.set_ylabel("Cumulative Explained Variance (%)")
     ax.set_title("Cumulative")
@@ -217,20 +228,38 @@ def fig_scree(full_pca):
 
 # ── 5.2  PCA 2-D regime scatter ─────────────────────────────────────────────
 
-def fig_2d_scatter(df, title_prefix, x_col, y_col, regime_col, filename):
+def fig_2d_scatter(df, title_prefix, prefix_col, regime_col, filename):
     fig, axes = plt.subplots(1, 3, figsize=(16, 5), sharey=True)
     fig.suptitle(f"{title_prefix} — 2-D Latent Space by Regime", fontsize=14, fontweight="bold")
 
+    cols = [f"{prefix_col}{i+1}" for i in range(N_COMPONENTS_3)]
+    
+    if N_COMPONENTS_3 > 2:
+        print(f"    Applying t-SNE to reduce >2D to 2D for {title_prefix} 2D plotting...")
+        tsne_2d = TSNE(n_components=2, random_state=RANDOM_STATE)
+        reduced_2d = tsne_2d.fit_transform(df[cols])
+        df_plot = df.copy()
+        df_plot["plot_x"] = reduced_2d[:, 0]
+        df_plot["plot_y"] = reduced_2d[:, 1]
+        x_col_name = "t-SNE 1"
+        y_col_name = "t-SNE 2"
+    else:
+        df_plot = df
+        df_plot["plot_x"] = df[f"{prefix_col}1"]
+        df_plot["plot_y"] = df[f"{prefix_col}2"]
+        x_col_name = f"{prefix_col}1"
+        y_col_name = f"{prefix_col}2"
+
     for ax, split in zip(axes, ("train", "val", "test")):
-        sub = df[df["split"] == split]
+        sub = df_plot[df_plot["split"] == split]
         for r in range(N_CLUSTERS):
             mask = sub[regime_col] == r
-            ax.scatter(sub.loc[mask, x_col], sub.loc[mask, y_col],
+            ax.scatter(sub.loc[mask, "plot_x"], sub.loc[mask, "plot_y"],
                        c=PALETTE[r], label=f"Regime {r}", alpha=0.55, s=18, edgecolors="none")
         ax.set_title(f"{split.capitalize()} split")
-        ax.set_xlabel(x_col.upper())
+        ax.set_xlabel(x_col_name.upper())
         if split == "train":
-            ax.set_ylabel(y_col.upper())
+            ax.set_ylabel(y_col_name.upper())
         ax.legend(markerscale=1.4, fontsize=8)
 
     plt.tight_layout()
@@ -250,21 +279,40 @@ def fig_3d_comparison(merged_df):
     ax1 = fig.add_subplot(121, projection="3d")
     ax2 = fig.add_subplot(122, projection="3d")
 
+    pc_cols = [f"pc{i+1}" for i in range(N_COMPONENTS_3)]
+    z_cols = [f"z{i+1}" for i in range(N_COMPONENTS_3)]
+    
+    if N_COMPONENTS_3 > 3:
+        print("    Applying t-SNE to reduce >3D to 3D for plotting...")
+        tsne_pca = TSNE(n_components=3, random_state=RANDOM_STATE)
+        tsne_ae = TSNE(n_components=3, random_state=RANDOM_STATE)
+        
+        pca_3d = tsne_pca.fit_transform(merged_df[pc_cols])
+        ae_3d = tsne_ae.fit_transform(merged_df[z_cols])
+        
+        plot_pc1, plot_pc2, plot_pc3 = pca_3d[:,0], pca_3d[:,1], pca_3d[:,2]
+        plot_z1, plot_z2, plot_z3 = ae_3d[:,0], ae_3d[:,1], ae_3d[:,2]
+        
+        pca_label_prefix = "t-SNE(PCA)"
+        ae_label_prefix = "t-SNE(AE)"
+    else:
+        plot_pc1, plot_pc2, plot_pc3 = merged_df["pc1"], merged_df["pc2"], merged_df["pc3"]
+        plot_z1, plot_z2, plot_z3 = merged_df["z1"], merged_df["z2"], merged_df["z3"]
+        pca_label_prefix = "PC"
+        ae_label_prefix = "Z"
+
     for r in range(N_CLUSTERS):
         mask = merged_df["pca_regime"] == r
-        ax1.scatter(merged_df.loc[mask, "pc1"],
-                    merged_df.loc[mask, "pc2"],
-                    merged_df.loc[mask, "pc3"],
+        ax1.scatter(plot_pc1[mask], plot_pc2[mask], plot_pc3[mask],
                     c=PALETTE[r], label=f"Regime {r}", s=12, alpha=0.5)
+        
         mask2 = merged_df["ae_regime"] == r
-        ax2.scatter(merged_df.loc[mask2, "z1"],
-                    merged_df.loc[mask2, "z2"],
-                    merged_df.loc[mask2, "z3"],
+        ax2.scatter(plot_z1[mask2], plot_z2[mask2], plot_z3[mask2],
                     c=PALETTE[r], label=f"Regime {r}", s=12, alpha=0.5)
 
     for ax, title, labels in [
-        (ax1, "PCA (3 components)", ("PC1", "PC2", "PC3")),
-        (ax2, "Autoencoder (3D latent)", ("Z1", "Z2", "Z3")),
+        (ax1, "PCA (3D plot)", (f"{pca_label_prefix}1", f"{pca_label_prefix}2", f"{pca_label_prefix}3")),
+        (ax2, "Autoencoder (3D plot)", (f"{ae_label_prefix}1", f"{ae_label_prefix}2", f"{ae_label_prefix}3")),
     ]:
         ax.set_title(title, fontsize=12)
         ax.set_xlabel(labels[0]); ax.set_ylabel(labels[1]); ax.set_zlabel(labels[2])
@@ -406,8 +454,8 @@ def fig_summary_metrics(cumulative, ae_df):
     ax.plot(range(1, min(51, len(cumulative)+1)), cumulative[:50] * 100,
             "o-", color="#2196F3", linewidth=2, markersize=4)
     ax.axvline(N_COMPONENTS_3, color="#FF5722", linewidth=2,
-               label=f"3 components → {cumulative[2]*100:.1f}% variance")
-    ax.fill_between(range(1, 4), 0, cumulative[:3] * 100, alpha=0.15, color="#FF5722")
+               label=f"{N_COMPONENTS_3} components → {cumulative[N_COMPONENTS_3-1]*100:.1f}% variance")
+    ax.fill_between(range(1, N_COMPONENTS_3 + 1), 0, cumulative[:N_COMPONENTS_3] * 100, alpha=0.15, color="#FF5722")
     ax.set_xlabel("Number of PCA components")
     ax.set_ylabel("Cumulative explained variance (%)")
     ax.set_title("PCA: Information Retention")
@@ -462,12 +510,16 @@ def build_interpretation(merged_df, cumulative, ari, nmi, labels, splits):
     print("=" * 72)
 
     print(f"\n[1] Dimensionality Reduction (PCA)")
-    print(f"    3 principal components explain {cumulative[2]*100:.1f}% of variance")
+    print(f"    {N_COMPONENTS_3} principal components explain {cumulative[N_COMPONENTS_3-1]*100:.1f}% of variance")
     print(f"    10 components: {cumulative[9]*100:.1f}%  |  "
           f"20 components: {cumulative[19]*100:.1f}%  |  "
           f"50 components: {cumulative[min(49, len(cumulative)-1)]*100:.1f}%")
-    print(f"    → Substantial information is lost in 3-D PCA; the AE compresses")
-    print(f"      non-linearly and may preserve structure PCA misses.")
+    if N_COMPONENTS_3 <= 3:
+        print(f"    → Substantial information is lost in {N_COMPONENTS_3}-D PCA; the AE compresses")
+        print(f"      non-linearly and may preserve structure PCA misses.")
+    else:
+        print(f"    → {N_COMPONENTS_3}-D PCA captures a substantial portion of the variance, narrowing the gap")
+        print(f"      between the linear PCA baseline and the non-linear AE representations.")
 
     print(f"\n[2] Regime Sizes (train set, {N_CLUSTERS} clusters via KMeans on PCA space)")
     for r in range(N_CLUSTERS):
@@ -495,7 +547,7 @@ def build_interpretation(merged_df, cumulative, ari, nmi, labels, splits):
         print("      in boundary placement, reflecting AE's non-linear capacity.")
     else:
         print("    → Low agreement: AE captures non-linear regime structure that linear")
-        print("      PCA cannot reproduce with only 3 components.")
+        print(f"      PCA cannot reproduce with only {N_COMPONENTS_3} components.")
 
     print(f"\n[5] Regime Temporal Interpretation")
     df_s = merged_df.sort_values("date")
@@ -562,7 +614,8 @@ def main():
     merged_df = merge_with_ae(pca_df, ae_df)
 
     # Save CSVs
-    latent_out = pca_df[["split", "window_index", "date", "pc1", "pc2", "pc3"]]
+    pc_cols = [f"pc{i+1}" for i in range(N_COMPONENTS_3)]
+    latent_out = pca_df[["split", "window_index", "date"] + pc_cols]
     latent_out.to_csv(OUT_DIR / "pca_latent_space.csv", index=False)
     pca_df.to_csv(OUT_DIR / "pca_clustered_regimes.csv", index=False)
     merged_df.to_csv(OUT_DIR / "pca_ae_comparison.csv", index=False)
@@ -570,9 +623,9 @@ def main():
 
     print("\nGenerating figures …")
     cumulative = fig_scree(full_pca)
-    fig_2d_scatter(pca_df, "PCA", "pc1", "pc2", "regime",
+    fig_2d_scatter(pca_df, "PCA", "pc", "regime",
                    "02_pca_2d_regimes.png")
-    fig_2d_scatter(ae_df, "Autoencoder", "z1", "z2", "regime",
+    fig_2d_scatter(ae_df, "Autoencoder", "z", "regime",
                    "03_ae_2d_regimes.png")
     fig_3d_comparison(merged_df)
     fig_regime_timeline(merged_df)

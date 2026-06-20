@@ -3,7 +3,7 @@
 This project covers Person 2's part of the assignment:
 
 - train an autoencoder on preprocessed financial time-series features,
-- extract a 3-dimensional latent representation,
+- extract a 16-dimensional latent representation,
 - cluster the latent vectors into market regimes,
 - export results for visualization and interpretation.
 
@@ -20,7 +20,7 @@ market-regime-autoencoder/outputs/handoff/clustered_regimes.csv
 It contains:
 
 ```text
-split,window_index,date,z1,z2,z3,regime
+split,window_index,date,z1,z2,...,z16,regime
 ```
 
 Column meanings:
@@ -28,7 +28,7 @@ Column meanings:
 - `split`: original time split from the data handoff (`train`, `val`, `test`),
 - `window_index`: index of the 26-week window inside its split,
 - `date`: end date of the 26-week window,
-- `z1`, `z2`, `z3`: 3-dimensional autoencoder latent representation,
+- `z1` through `z16`: 16-dimensional autoencoder latent representation,
 - `regime`: KMeans regime label assigned from the latent space.
 
 If only the latent representation is needed, use:
@@ -69,7 +69,7 @@ The model is a fully connected autoencoder implemented in PyTorch:
 
 - input: one flattened 26-week window with 30 features, so `26 x 30 = 780` inputs,
 - encoder: `Linear(780, 64) -> ReLU -> Linear(64, 3)`,
-- latent space: 3 dimensions, `z1`, `z2`, `z3`,
+- latent space: 16 dimensions, `z1` through `z16`,
 - decoder: `Linear(3, 64) -> ReLU -> Linear(64, 780)`,
 - objective: mean squared reconstruction error,
 - optimizer: Adam,
@@ -80,7 +80,7 @@ The model is a fully connected autoencoder implemented in PyTorch:
 
 KMeans is fitted only on the training latent vectors and then used to assign regimes to validation and test. This avoids using validation/test data to define the clusters.
 
-We use a 3-dimensional latent space because it remains interpretable and visualizable while allowing the model to capture richer market dynamics than a 2-dimensional representation. The root data README mentions 8-16 dimensions as a sensible reconstruction-oriented range, but this project intentionally uses 3 dimensions for interpretability and comparison with PCA visualizations.
+We use a 16-dimensional latent space (widened from an earlier 3-dimensional architecture) to prevent representation mode collapse. The root data README mentions 8-16 dimensions as a sensible reconstruction-oriented range, and 16 dimensions gives the network sufficient capacity to accurately differentiate market regimes out-of-sample. For interpretability and visualization, we subsequently apply t-SNE to project the 16-D representations down to 2-D and 3-D.
 
 ## Expected Data Contract
 

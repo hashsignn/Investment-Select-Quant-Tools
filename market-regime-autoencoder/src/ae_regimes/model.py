@@ -1,21 +1,29 @@
 from __future__ import annotations
 
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
+import config
+
 import torch
 from torch import nn
 
 
 class Autoencoder(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int = 16, latent_dim: int = 3):
+    def __init__(self, input_dim: int, hidden_dim: int = 256, latent_dim: int = config.LATENT_DIM):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
-            nn.Linear(hidden_dim, latent_dim),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Linear(64, config.LATENT_DIM),
         )
         self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim),
+            nn.Linear(config.LATENT_DIM, 64),
             nn.ReLU(),
-            nn.Linear(hidden_dim, input_dim),
+            nn.Linear(64, 256),
+            nn.ReLU(),
+            nn.Linear(256, input_dim),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
