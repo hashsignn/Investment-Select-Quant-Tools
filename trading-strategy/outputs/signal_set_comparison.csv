@@ -1,0 +1,4 @@
+signal_set,recon_train,recon_val,recon_test,train_sharpe,train_ic,val_sharpe,val_ic,test_sharpe,test_ic
+"Set A (macro, 10 feat.)",0.0288,0.4475,0.9726,0.302,0.04,-0.623,-0.143,-0.045,-0.001
+"Set B (risk/sentiment, 10 feat.)",0.6185,0.6289,0.6533,0.442,0.07,-0.437,-0.043,-0.327,-0.046
+Full (all 30 feat.),0.3025,0.612,1.1974,0.327,0.031,0.003,-0.048,-0.276,-0.07
