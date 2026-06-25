@@ -1,6 +1,12 @@
 % =====================================================================
 %  Market Regime Detection Using Autoencoders and PCA
 %  Presentation Script (15 min) + Q&A Preparation
+%
+%  This document is a SPOKEN WALKTHROUGH OF THE REPORT (main.tex), not of
+%  the code. Each block maps to a section of the paper, so the talk and the
+%  written report tell exactly the same story: motivation -> data ->
+%  method -> results -> trading test -> limitations -> future work.
+%
 %  Compile with pdflatex (run twice for the table of contents).
 %  Only standard packages are used (works on Overleaf out of the box).
 % =====================================================================
@@ -83,6 +89,14 @@
   fonttitle=\sffamily\bfseries
 }
 
+% Slide-cue box: which figure/table from the report to show
+\newtcolorbox{slide}{
+  enhanced, breakable, sharp corners,
+  colback=white, colframe=rule, boxrule=1pt,
+  left=9pt, right=9pt, top=4pt, bottom=4pt,
+  before skip=6pt, after skip=6pt
+}
+
 % Q&A box: \begin{qa}{question} answer \end{qa}
 \newtcolorbox{qa}[1]{
   enhanced, breakable, sharp corners,
@@ -111,6 +125,9 @@
 
 \newcommand{\setp}[2]{\colorlet{accent}{#1}\colorlet{accentl}{#2}}
 
+% Small helper: "Report ref" tag inside a slide cue
+\newcommand{\reportref}[1]{{\small\color{ink}\textbf{Show:} #1}}
+
 % =====================================================================
 \begin{document}
 
@@ -123,14 +140,15 @@
 {\sffamily\bfseries\Huge\color{p1} Using Autoencoders \& PCA}\\[18pt]
 {\color{rule}\rule{0.7\textwidth}{1.5pt}}\\[18pt]
 {\sffamily\Large\color{ink} Presentation Script \;\&\; Q\&A Preparation}\\[6pt]
+{\sffamily\large\color{ink} A spoken walkthrough of the written report}\\[4pt]
 {\sffamily\large\color{ink} 15-minute group talk \,$\cdot$\, three speakers \,$\cdot$\, 5 minutes each}\\[40pt]
 
-\begin{tcolorbox}[enhanced, width=0.8\textwidth, halign=center,
+\begin{tcolorbox}[enhanced, width=0.82\textwidth, halign=center,
    colback=soft, colframe=rule, boxrule=1pt, sharp corners]
 \sffamily\large
-\textcolor{p1}{\textbf{Person 1 — Harjot Singh}}\\ Data Collection \& Preprocessing\\[8pt]
-\textcolor{p2}{\textbf{Person 2 — Eleni Tsaousi}}\\ Autoencoder \& Clustering\\[8pt]
-\textcolor{p3}{\textbf{Person 3 — Adene Dinoshi}}\\ PCA, Comparison \& Interpretation
+\textcolor{p1}{\textbf{Person 1 — Harjot Singh}}\\ Motivation, Data \& Preprocessing\\ {\small (Report §I–III)}\\[8pt]
+\textcolor{p2}{\textbf{Person 2 — Eleni Tsaousi}}\\ Autoencoder, Training \& Clustering\\ {\small (Report §IV; §V-A,B)}\\[8pt]
+\textcolor{p3}{\textbf{Person 3 — Adene Dinoshi}}\\ PCA, Trading Strategy, Limitations \& Outlook\\ {\small (Report §V-C–F; §VI–VIII)}
 \end{tcolorbox}
 
 \vfill
@@ -140,18 +158,22 @@
 % ---------------- Table of contents ----------------------------------
 \setp{ink}{soft}
 {\hypersetup{linkcolor=ink}
-\renewcommand{\contentsname}{\sffamily\color{ink}Contents}
+\renewcommand{\contentsname}{Contents}
 \tableofcontents}
 \vspace{6pt}
 
 \begin{tcolorbox}[enhanced, sharp corners, colback=amberl, colframe=amber,
     boxrule=0pt, leftrule=4pt, left=10pt, right=10pt, top=6pt, bottom=6pt]
 \sffamily\small
-\textbf{\textcolor{amber}{How to use this document.}} Part~I is the word-for-word
-script, split into three colour-coded sections — one per speaker — with a timing
-cue and a ``key numbers'' card on every block. Part~II is the Q\&A: each person
-should master their own colour-coded section and skim the others. All figures
-referenced live in \texttt{pca-regime-analysis/outputs/figures/}.
+\textbf{\textcolor{amber}{How to use this document.}} This is a presentation of
+\emph{the report}, section by section --- not a tour of the code. Part~I is the
+word-for-word script, split into three colour-coded sections (one per speaker),
+each with a timing cue, a ``key numbers'' card, and a grey \textbf{Show} cue
+naming the exact figure or table from the report to put on screen. Part~II is the
+Q\&A: master your own colour-coded section and skim the others. All figures and
+tables referenced are those in the report
+(\texttt{Market\_Regime\_Detection\_Using\_Autoencoders\_and\_PCA/}, mirrored in
+\texttt{pca-regime-analysis/outputs/figures/}).
 \end{tcolorbox}
 
 \newpage
@@ -169,226 +191,275 @@ referenced live in \texttt{pca-regime-analysis/outputs/figures/}.
 % PERSON 1
 % =====================================================================
 \setp{p1}{p1l}
-\section{Person 1 — Data Layer}
-\personbanner{Harjot Singh}{Data Collection \& Preprocessing}{$\approx$ 5 min}
+\section{Person 1 — Motivation \& Data (Report §I–III)}
+\personbanner{Harjot Singh}{Motivation, Data \& Preprocessing}{$\approx$ 5 min}
 
-\begin{numbers}{Key numbers to remember}
+\begin{numbers}{Key numbers (from the report)}
 \sffamily\small
-Weekly data, \textbf{Apr 1988 → May 2026} ($\approx$38 yrs) \;$\cdot$\;
-\textbf{30 features} (8 log-return + 22 macro) \;$\cdot$\;
-Split \textbf{70/15/15 by time} \;$\cdot$\;
-Window \textbf{26 weeks}, stride 1 \;$\cdot$\;
-Train windows \textbf{1365 $\times$ 26 $\times$ 30} \;$\cdot$\;
-\textbf{13/13} contract tests pass.
+Weekly data, \textbf{1988 → 2026} ($\approx$38 yrs) \;$\cdot$\;
+\textbf{30 features} (8 log-return + 22 macro/valuation) \;$\cdot$\;
+Split \textbf{70/15/15 by time} (train 1988–2014, val 2014–2020, test 2020–2026) \;$\cdot$\;
+Window \textbf{26 weeks}, stride 1, flattened to \textbf{780} \;$\cdot$\;
+Train tensor \textbf{1365 $\times$ 26 $\times$ 30}.
 \end{numbers}
 
-\begin{cue}{Opening}{30 sec}
-Good morning, everyone. My name is Harjot, and I will start us off by walking you
-through the foundation of our project: where our data comes from, why we chose it,
-and how we turned raw market information into a clean, model-ready dataset that
-both my teammates could build on.
+\begin{cue}{Opening \& roadmap}{40 sec}
+Good morning. I'm Harjot, and on behalf of our group I'll walk you through our
+report on \textbf{market regime detection}. Here's the plan for the next fifteen
+minutes: I'll set up the \emph{problem} and the \emph{data} the report is built
+on; Eleni will present the \emph{autoencoder} and how we turn it into regimes; and
+Adene will cover the \emph{PCA benchmark}, the \emph{trading test} of whether
+those regimes are worth anything, and our honest \emph{limitations and next
+steps}. The whole talk follows the structure of the written report.
 \end{cue}
 
-\begin{cue}{Why this data?}{60 sec}
-The central question we study is: can we detect distinct \textbf{market regimes} —
-recurring states like bull markets, crisis periods, or high-inflation environments —
-from financial and macroeconomic data alone, with \emph{no} manual labelling?
+\begin{cue}{The question \& objective}{60 sec}
+The report opens with one question: can we detect distinct \textbf{market
+regimes} --- recurring states like calm bull markets, inflationary periods, or
+crises --- from financial and macroeconomic data alone, with \emph{no} manual
+labelling? This matters because knowing the prevailing regime supports portfolio
+allocation, risk management, and asset pricing.
 
-To do that we needed data capturing both price dynamics \emph{and} the economic
-environment. We chose a weekly US dataset from April 1988 to May 2026 — nearly
-38 years. It has 30 features: eight price/index series (equity market, gold, oil,
-the US dollar, Treasury yields) plus 22 macro and valuation indicators — yield
-curve, CPI, unemployment, CAPE, dividend yield, GDP, recession probability.
-Together these tell us \emph{what} markets are doing and \emph{why} — exactly what
-regime detection needs.
+Our objective, stated in Section~I, is to test whether an \textbf{autoencoder} can
+learn a meaningful low-dimensional representation of market behaviour that
+clusters into regimes --- and, crucially, to benchmark it against \textbf{PCA} at
+identical dimensionality, so any difference is attributable to the \emph{method},
+linear versus non-linear, not to the number of dimensions.
 \end{cue}
 
-\begin{cue}{The stationarity problem}{60 sec}
-My first problem was non-stationarity. The eight price columns are raw levels —
-they just trend upward over decades. Fed in directly, the autoencoder would learn
-the \emph{trend}, not the \emph{regime}. Augmented Dickey–Fuller tests confirmed
-all eight had p-values near 1.0 — strongly non-stationary. The fix: convert each
-to \textbf{log returns} — the natural log of today's price over yesterday's. After
-that, all eight had p-values below 0.0001. The 22 macro features were already
-stationary — year-over-year GDP or unemployment don't trend forever — so I kept
-them as-is.
+\begin{slide}\reportref{Section~III ``Data and Preprocessing'' --- the dataset description}\end{slide}
+\begin{cue}{The data}{50 sec}
+Section~III describes the data. We use the course market dataset: a weekly US
+series from 1988 to 2026 --- nearly 38 years and multiple business cycles. It has
+\textbf{30 features} spanning two groups: eight price/index series (the equity
+market, gold, oil, the dollar, Treasury and credit prices) and twenty-two macro
+and valuation indicators (yield curve, CPI, unemployment, CAPE, dividend yield,
+GDP). Together they capture both \emph{what} markets are doing and the economic
+environment \emph{behind} it --- exactly what regime detection needs.
 \end{cue}
 
-\begin{cue}{Split \& scaling — anti-leakage}{60 sec}
-The second critical step was preventing \textbf{data leakage}. We split 70/15/15
-\emph{by time} — never shuffled. Train is 1988–2014, validation 2014–2020, and the
-test set is the most recent period, 2020–2026. I fit a \texttt{StandardScaler} on
-the \emph{training data only}, then applied it to validation and test. The model
-must never see the future when learning to standardise.
-
-I also wrote a 13-point automated contract test: no NaNs, correct shapes and
-dtypes, and — crucially — that validation and test means \emph{drift away} from
-zero, proving the scaler was not re-fit on them. All 13 checks pass.
+\begin{cue}{Making the data stationary}{50 sec}
+The first preprocessing problem is \textbf{non-stationarity}. The eight price
+columns are raw levels that simply trend upward for decades; fed in directly, the
+model would learn the \emph{trend}, not the \emph{regime}. Augmented
+Dickey--Fuller tests put their $p$-values near 1.0 --- strongly non-stationary.
+The fix is to convert each to \textbf{log returns}; afterwards all eight have
+$p<0.0001$. The 22 macro features are already stationary rates and ratios, so we
+keep them as they are.
 \end{cue}
 
-\begin{cue}{Windows \& the handoff}{60 sec}
-Finally, the input windows. A sequence autoencoder needs a fixed-length snapshot
-of the recent past. I tested windows from 13 to 78 weeks and measured the regime
-\emph{flip rate} between adjacent windows — it stayed under 0.5\% for every size,
-because slow macro signals dominate. So I chose \textbf{26 weeks} ($\approx$ 6
-months) on economic grounds — a natural half-year horizon. The training tensor is
-$1365 \times 26 \times 30$: 1365 overlapping windows, each 26 weeks of 30 features.
+\begin{cue}{Splits \& anti-leakage}{50 sec}
+The second principle, also in Section~III, is preventing \textbf{look-ahead
+leakage}. We split \textbf{70/15/15 by time, never shuffled}: train is the oldest
+data (1988–2014), then validation (2014–2020), and the test set is the most recent
+period (2020–2026). A \texttt{StandardScaler} is fit on \emph{training data only}
+and then applied to validation and test --- so the model never uses the future to
+standardise the past. This forward-chaining design is what makes our
+out-of-sample claims honest.
+\end{cue}
 
-I packaged everything — windows, scaler, schema, metadata — into one handoff folder
-Eleni could load in two lines of Python and start training immediately.
+\begin{cue}{Rolling windows \& the handoff}{50 sec}
+Finally, the input format. A regime isn't a single week --- it's a stretch of
+time --- so we slide a \textbf{26-week window} (about six months) across each split
+with stride one, never crossing a split boundary. Each window flattens
+$26 \times 30 = \textbf{780}$ values, and the training tensor is
+$1365 \times 26 \times 30$. Twenty-six weeks is long enough to smooth single-week
+noise yet short enough to catch a regime change within a quarter or two. I handed
+Eleni a clean, leak-free, model-ready dataset.
 \end{cue}
 
 \begin{cue}{Hand over}{10 sec}
-I'll now hand over to Eleni, who took this data and trained the autoencoder.
+With that foundation in place, I'll hand over to Eleni, who turns these windows
+into a learned representation and then into regimes.
 \end{cue}
 
 % =====================================================================
 % PERSON 2
 % =====================================================================
 \setp{p2}{p2l}
-\section{Person 2 — Autoencoder}
-\personbanner{Eleni Tsaousi}{Autoencoder Implementation, Training \& Clustering}{$\approx$ 5 min}
+\section{Person 2 — Autoencoder \& Clustering (Report §IV; §V-A,B)}
+\personbanner{Eleni Tsaousi}{Method, Training, Reconstruction \& Clustering}{$\approx$ 5 min}
 
-\begin{numbers}{Key numbers to remember}
+\begin{numbers}{Key numbers (from the report)}
 \sffamily\small
 Input \textbf{780} ($26\times30$) \;$\cdot$\;
-Encoder \textbf{780→256→64→16} (ReLU) \;$\cdot$\;
+Encoder \textbf{780→256→64→16}, symmetric decoder, ReLU \;$\cdot$\;
 Latent \textbf{16-D} \;$\cdot$\;
 Adam, weight decay \textbf{5e-4}, early stopping (patience 40), $\le$200 epochs \;$\cdot$\;
-Recon loss \textbf{train 0.30 / val 0.61 / test 1.20} \;$\cdot$\;
-KMeans \textbf{K=4} (fit on train latent only).\\[3pt]
-Regime counts (full data): \textbf{R0 = 379, R1 = 666, R2 = 345, R3 = 521}.
+Recon MSE \textbf{train 0.30 / val 0.61 / test 1.20} \;$\cdot$\;
+Ablation: \textbf{16-D} gives the lowest test MSE (\textbf{1.20}) \;$\cdot$\;
+KMeans \textbf{K=4} (fit on train latent only).
 \end{numbers}
 
 \begin{cue}{Opening}{20 sec}
-Thank you, Harjot. I'm Eleni, and I built and trained the autoencoder that learns
-a compressed representation of market behaviour from the windows Harjot produced.
+Thank you, Harjot. I'm Eleni. I'll present the methodology and the autoencoder
+results --- Sections~IV and~V-A,B of the report --- which is the heart of the
+pipeline: how we compress those windows and turn them into four regimes.
 \end{cue}
 
-\begin{cue}{Why an autoencoder?}{50 sec}
-An autoencoder is a neural network that compresses its input through a narrow
-\textbf{bottleneck} and then reconstructs it. The bottleneck forces it to keep only
-what's essential — the underlying market state, not the noise. Its key advantage
-over PCA, which Adene will cover, is capturing \textbf{non-linear} relationships.
-Markets aren't linear: a 1\% rise in yields means something very different
-depending on whether inflation is high or low and whether unemployment is rising.
-We want a representation that can pick up those interactions.
+\begin{slide}\reportref{Fig.~1 ``framework'' --- the four-stage pipeline diagram}\end{slide}
+\begin{cue}{The framework}{40 sec}
+The report frames the method as \textbf{four stages}, shown in Figure~1: compress
+each window into a low-dimensional representation --- with \emph{both} an
+autoencoder and PCA --- then cluster the representations with K-Means, then
+interpret each cluster as a market regime. Everything is \textbf{unsupervised}:
+regimes aren't labelled in advance, we let the structure emerge.
 \end{cue}
 
-\begin{cue}{Architecture}{60 sec}
-The input is one flattened 26-week window: $26 \times 30 = 780$ values. The encoder
-compresses through three layers — 256, then 64, then a \textbf{16-dimensional
-bottleneck} — with ReLU activations. The decoder mirrors that back up to 780. We
-reconstruct the window and use \textbf{mean squared error} as the loss.
-
-Why 16 dimensions? Harjot's analysis showed a 10-component PCA already explains
-67\% of variance, and many features are strongly correlated — 11 pairs above 0.8.
-So the 30 inputs carry far fewer independent dimensions; 16 is a meaningful
-compression without collapsing the representation. An earlier 3-D bottleneck
-suffered mode collapse, which widening to 16 fixed.
+\begin{slide}\reportref{Fig.~2 ``autoencoder\_architecture'' --- encoder/bottleneck/decoder}\end{slide}
+\begin{cue}{Why an autoencoder, and its architecture}{60 sec}
+An autoencoder compresses its input through a narrow \textbf{bottleneck} and
+reconstructs it; the bottleneck forces it to keep only what's essential. Its
+advantage over PCA is capturing \textbf{non-linear} structure --- and markets are
+non-linear: a rise in yields means something different when inflation is high
+versus low. Figure~2 shows the architecture: the 780-value window is compressed
+$256 \to 64 \to \textbf{16}$ with ReLUs, then a symmetric decoder rebuilds it to
+780. We train on \textbf{mean squared reconstruction error}. The report justifies
+16 latent dimensions on two grounds: the features are highly correlated, so the
+effective dimensionality is far below 30; and a much narrower bottleneck causes
+\emph{mode collapse}.
 \end{cue}
 
-\begin{cue}{Training \& early stopping}{60 sec}
-I trained with the \textbf{Adam} optimiser and a weight decay of $5\times10^{-4}$
-for regularisation. Crucially, I used \textbf{early stopping} on the validation
-loss — up to 200 epochs, but the best checkpoint is saved when validation stops
-improving. This prevents overfitting to the training period.
-
-Reconstruction loss reached about \textbf{0.30} on train, \textbf{0.61} on
-validation, and \textbf{1.20} on test. The higher test loss reflects genuine
-\textbf{distributional shift}: the test period (2020–2026) includes COVID, the
-post-pandemic inflation surge, and aggressive Fed rate hikes — conditions barely
-present in training. We read this as evidence of a possible regime shift, not a
-model failure.
+\begin{slide}\reportref{Table~II ``reconstruction loss by split''}\end{slide}
+\begin{cue}{Training \& reconstruction results}{50 sec}
+We train with Adam and weight decay for regularisation, and --- importantly ---
+\textbf{early stopping} on validation loss, keeping the best checkpoint. Section~V-A
+reports the reconstruction loss: about \textbf{0.30} on train, \textbf{0.61} on
+validation, \textbf{1.20} on test --- and roughly a 70\% improvement over a naive
+mean-predicting baseline, confirming the model learns genuine structure. The much
+higher \emph{test} loss is expected: 2020–2026 includes COVID and the post-pandemic
+inflation-and-rate-hike cycle. The report reads this as evidence of a possible
+\textbf{regime shift}, not a model failure --- a thread Adene will pick up.
 \end{cue}
 
-\begin{cue}{Clustering into regimes}{60 sec}
-Once trained, I extracted the 16-D latent vector for every window across all
-splits, then applied \textbf{K-Means with K=4}, fitting the cluster centres on the
-\emph{training} latent vectors only and assigning regimes to validation and test.
-Four clusters matches the intuition that markets move through a few broad states:
-expansion, contraction, stress, and transition.
+\begin{slide}\reportref{Table~III ``latent-dimension ablation''}\end{slide}
+\begin{cue}{Ablation: why 16 dimensions}{50 sec}
+Section~V-B stress-tests that choice. We retrain at latent widths 2, 3, 8, 16 and
+32. Two findings: \textbf{16 dimensions} gives the \emph{lowest} test reconstruction
+loss (1.20), and widening to 32 slightly overfits --- that's our primary reason for
+16. But the more revealing result is that out-of-sample \textbf{regime coverage
+does not improve with capacity}: the validation period populates only two of the
+four regimes at \emph{every} width. So the out-of-sample collapse is a genuine
+structural shift, not too small a bottleneck --- which is exactly why the trading
+rule struggles later.
+\end{cue}
 
-Across the full dataset the regimes split as \textbf{379 / 666 / 345 / 521}
-windows. Regime~1 is the largest, common ``baseline'' state; the smaller regimes
-pick out the more distinctive, atypical periods.
+\begin{cue}{Clustering into regimes}{40 sec}
+Finally, we cluster. I extract the 16-D latent vector for every window and apply
+\textbf{K-Means with K=4}, fitting the centres on \emph{training} latents only and
+assigning val/test out of sample --- same anti-leakage logic as the scaler. Four
+clusters is a deliberate choice: the report is honest that cluster-validity metrics
+don't single out K=4, so we pick it on \textbf{economic} grounds --- four states map
+cleanly onto easing, inflationary, stress, and a transitional baseline.
 \end{cue}
 
 \begin{cue}{Hand over}{20 sec}
-I exported the latent vectors, regime labels, and reconstruction losses to CSV.
-Adene used these as her baseline for comparison. Over to her.
+So we have a non-linear 16-D representation and four regimes. The natural question
+is: are they any better than a simple linear baseline, and do they mean anything?
+That's Adene.
 \end{cue}
 
 % =====================================================================
 % PERSON 3
 % =====================================================================
 \setp{p3}{p3l}
-\section{Person 3 — PCA \& Interpretation}
-\personbanner{Adene Dinoshi}{PCA, Comparison \& Market Regime Interpretation}{$\approx$ 5 min}
+\section{Person 3 — PCA, Trading Test \& Outlook (Report §V-C–F; §VI–VIII)}
+\personbanner{Adene Dinoshi}{PCA Comparison, Strategy, Limitations \& Future Work}{$\approx$ 5 min}
 
-\begin{numbers}{Key numbers to remember}
+\begin{numbers}{Key numbers (from the report)}
 \sffamily\small
-\textbf{16-component} PCA (fit on train) \;$\cdot$\;
-Variance: 10 PC = 67\%, \textbf{16 PC $\approx$ 71\%}, 50 PC = 82\% \;$\cdot$\;
-\textbf{ARI = 0.52}, \textbf{NMI = 0.58} (moderate agreement) \;$\cdot$\;
-PCA train regimes: R0 26.6\%, R1 34.0\%, R2 27.3\%, \textbf{R3 12.1\% (crisis)} \;$\cdot$\;
-Trading Sharpe: \textbf{train 0.23 / val 0.13 / test $-$0.28}.
+\textbf{16-component} PCA $\to$ \textbf{70.8\%} train variance (10 PC = 67\%, 50 PC = 82\%) \;$\cdot$\;
+Agreement \textbf{ARI = 0.52}, \textbf{NMI = 0.58} \;$\cdot$\;
+Crisis regime $\approx$ \textbf{12\%} of windows \;$\cdot$\;
+Trading Sharpe \textbf{train 0.23 / val 0.13 / test $-$0.28} \;$\cdot$\;
+Signal-robustness check: \textbf{every} feature set loses out of sample.
 \end{numbers}
 
 \begin{cue}{Opening}{20 sec}
-Thank you, Eleni. I'm Adene. My role was to build a PCA-based regime detector,
-compare it rigorously with the autoencoder, produce the visualisations, and
-interpret what the regimes mean economically.
+Thank you, Eleni. I'm Adene. My part is the payoff of the report: how the
+autoencoder compares to a PCA baseline (Section~V-C,D), whether the regimes carry
+\emph{economic} value in a trading test (Section~V-E), how robust that result is,
+and where the project's limits and next steps lie.
 \end{cue}
 
-\begin{cue}{Why PCA as a baseline?}{50 sec}
-PCA — Principal Component Analysis — is the natural \textbf{linear benchmark}. It
-finds the directions of maximum variance and projects the data onto them. It's
-fast, interpretable, and well understood. If the autoencoder doesn't clearly beat
-PCA, we can't justify the extra complexity. To keep the comparison fair, I used the
-\emph{same} 16-dimensional projection as Eleni's bottleneck, fit on training only,
-and clustered with the same K-Means, K=4.
+\begin{slide}\reportref{Fig.~3 ``01\_scree\_plot'' --- PCA explained variance}\end{slide}
+\begin{cue}{The PCA baseline}{40 sec}
+PCA is the natural \textbf{linear benchmark}: fast, interpretable, well understood.
+If the autoencoder can't beat it, the extra complexity isn't justified. To keep the
+comparison fair I use the \emph{same} 16-dimensional projection, fit on training
+only, and the same K-Means. The scree plot, Figure~3, shows 16 components retain
+\textbf{70.8\%} of the variance --- so both methods work from a genuinely compressed
+view, and any difference reflects \emph{linear vs.\ non-linear}, not dimensionality.
 \end{cue}
 
-\begin{cue}{What PCA explains}{50 sec}
-The scree plot shows 16 components explain about \textbf{71\%} of the variance. For
-context: 10 components give 67\%, and you need 50 to reach 82\%. So the 16-D linear
-representation already retains most of the information — meaning both methods work
-from a genuinely compressed view of the same data. Differences in regime quality
-therefore reflect \emph{linear vs.\ non-linear capacity}, not a difference in
-dimensionality.
+\begin{slide}\reportref{Fig.~4 ``07\_regime\_agreement\_heatmap''}\end{slide}
+\begin{cue}{Agreement --- the key methodological result}{50 sec}
+How much do the two methods agree? Section~V-C reports an \textbf{Adjusted Rand
+Index of 0.52} and \textbf{Normalised Mutual Information of 0.58} --- \emph{moderate}
+agreement, shown in the heatmap (Figure~4). This is our central finding: PCA and
+the autoencoder share real regime structure but disagree on roughly half the
+boundaries. The honest reading, which the report stresses, cuts both ways: the
+autoencoder \emph{does} capture non-linear structure PCA can't reproduce in 16
+components --- but a large share of the regime signal is in fact linear, so the
+neural network's added value here is real yet modest.
 \end{cue}
 
-\begin{cue}{Agreement metrics — the key result}{60 sec}
-I measured how much the two methods agree with two standard metrics. The
-\textbf{Adjusted Rand Index} is \textbf{0.52} out of 1; \textbf{Normalised Mutual
-Information} is \textbf{0.58}. Both mean \emph{moderate} agreement — well above
-random, well short of perfect. This is our key finding: PCA and the autoencoder
-share real regime structure but disagree on roughly half the boundary placements.
-The autoencoder is capturing non-linear structure that linear PCA cannot reproduce
-even in 16 dimensions.
+\begin{slide}\reportref{Fig.~5 ``05\_regime\_timeline'' + Table~IV (regime profiles)}\end{slide}
+\begin{cue}{What the regimes mean}{45 sec}
+Section~V-D interprets the four regimes from their average feature values.
+\textbf{Regime~0}: low short and long rates --- a calm, easing environment.
+\textbf{Regime~2}: high CPI and rising 10-year yields --- inflationary pressure.
+\textbf{Regime~3} is the most distinct --- peak yield-spread stress and unemployment
+with the sharpest GDP contraction: our \textbf{crisis} regime, about 12\% of
+windows. \textbf{Regime~1} is the large, diffuse baseline. The timeline (Figure~5)
+backs this up: Regime~3 clusters around the early-90s recession, 2008, and the COVID
+shock.
 \end{cue}
 
-\begin{cue}{Economic interpretation}{60 sec}
-The per-regime feature profiles give economic meaning. \textbf{Regime~0}: low
-short- and long-term rates — a low-volatility, easing environment. \textbf{Regime~2}:
-high CPI and rising 10-year yields — inflationary pressure. \textbf{Regime~3} is the
-most distinct — highest yield-spread stress and unemployment with the sharpest GDP
-contraction: our \textbf{crisis} regime, about 12\% of windows. \textbf{Regime~1} is
-the largest and most diffuse — a normal/transitional baseline. The timeline confirms
-this: Regime~3 clusters around the early-1990s recession, the 2008 crisis, and parts
-of the COVID shock.
+\begin{slide}\reportref{Table~V (position rule) + Table~VI (strategy Sharpe by split)}\end{slide}
+\begin{cue}{Do the regimes carry economic value?}{55 sec}
+This is the question that ties back to ``Investments''. In Section~V-E we build a
+deliberately simple test: rank the regimes by their average forward return
+\emph{in training}, then go \textbf{long} the best regime, \textbf{short} the worst,
+flat otherwise --- and \textbf{freeze that rule} and apply it unchanged out of
+sample. In sample it works as designed: Sharpe \textbf{0.23}, and the crisis regime
+correctly precedes the worst returns. Out of sample the story falls apart:
+validation Sharpe is a thin \textbf{0.13}, and on the test set the strategy
+\emph{loses} money --- Sharpe \textbf{$-0.28$}, beaten by simple buy-and-hold, with
+an information coefficient indistinguishable from zero. So the honest answer is:
+\textbf{not yet a tradeable signal} on its own.
 \end{cue}
 
-\begin{cue}{Closing}{40 sec}
-To summarise: Harjot built a rigorously leak-free pipeline on 38 years of weekly
-data. Eleni trained a non-linear autoencoder compressing it into 16 dimensions and
-clustered four regimes. I benchmarked that against a linear PCA of identical
-dimensionality, found moderate agreement, and interpreted each regime
-economically. The result is a fully reproducible, end-to-end pipeline for
-unsupervised market regime detection — with honest documentation of where the
-autoencoder adds value over the linear baseline and where it does not yet
-generalise out of sample. Thank you.
+\begin{slide}\reportref{Table~VII ``robustness to the choice of input signals''}\end{slide}
+\begin{cue}{Is that failure robust?}{30 sec}
+We checked whether this is just an artifact of our feature choice. Section~V-F
+retrains the whole pipeline on three input sets --- macro-only, risk/sentiment-only,
+and the full 30 features. The verdict is unchanged: \emph{every} set is profitable
+in sample but posts a \textbf{negative test Sharpe}. The out-of-sample breakdown is
+a property of the regime signal over this period, not of one feature selection.
+\end{cue}
+
+\begin{cue}{Limitations \& future work}{45 sec}
+The report is upfront about limits (Sections~VI–VII). The windows overlap heavily
+--- consecutive inputs share 25 of 26 weeks --- so the effective sample is far
+smaller than 1365 and the regimes look more stable than they are. The autoencoder is
+trained only to \emph{reconstruct}, so the regimes are a by-product of compression,
+not optimised to predict returns. And the Sharpe figures are on standardised, not
+raw percentage, returns. The natural next steps follow directly: a
+clustering-aware or contrastive training objective, LSTM/variational architectures,
+combining the regime with confirming predictors instead of trading it alone, and
+\textbf{periodic retraining} so the regimes adapt instead of being frozen at 2014.
+\end{cue}
+
+\begin{cue}{Conclusion}{30 sec}
+To conclude: Harjot built a leak-free pipeline over 38 years of weekly data; Eleni
+trained a non-linear autoencoder compressing it to 16 dimensions and clustered four
+regimes; and the PCA benchmark shows the autoencoder adds genuine but modest
+non-linear value. The regimes are a useful \textbf{descriptive} lens on market
+history --- but a frozen regime rule does not survive the post-2020 structural
+break. Representation learning characterises regimes well; turning that into an
+investable signal needs adaptation, not just a wider bottleneck. Thank you ---
+we're happy to take questions.
 \end{cue}
 
 \newpage
@@ -402,188 +473,194 @@ generalise out of sample. Thank you.
 \vspace{2pt}
 \begin{tcolorbox}[enhanced, sharp corners, colback=amberl, colframe=amber,
     boxrule=0pt, leftrule=4pt, left=10pt, right=10pt, top=6pt, bottom=6pt]
-\sffamily\small \textbf{\textcolor{amber}{Tip.}} Know your own section cold; skim the
-other two so you can field a hand-off question gracefully. If you're unsure, it's
-fine to say ``that's more Eleni's area'' and redirect.
+\sffamily\small \textbf{\textcolor{amber}{Tip.}} Every answer below maps to a claim
+in the report. Know your own section cold; skim the others so you can field a
+hand-off question. If unsure, it's fine to say ``that's more Eleni's area'' and
+redirect.
 \end{tcolorbox}
 
 % --------------------- Person 1 Q&A ----------------------------------
 \setp{p1}{p1l}
-\section{Q\&A — Person 1 (Data)}
+\section{Q\&A — Person 1 (Data, §III)}
 
 \begin{qa}{Why weekly frequency, not monthly or daily?}
-Weekly has enough resolution to catch transitions as they develop — monthly might
-already be mid-transition — while avoiding daily microstructure noise. Macro series
-like CPI and GDP are monthly/quarterly, so we forward-fill them to weekly, which is
+Weekly has enough resolution to catch transitions as they develop --- monthly might
+already be mid-transition --- while avoiding daily microstructure noise. Macro series
+like CPI and GDP are monthly/quarterly, so they're forward-filled to weekly, which is
 fine for slow-moving signals.
 \end{qa}
 
 \begin{qa}{Why log returns instead of simple percentage returns?}
 Log returns are additive over time, approximately normal for small moves, and the
 standard in financial econometrics. The numerical difference is tiny at this scale,
-but it makes the ADF stationarity tests cleaner and is methodologically correct.
+but it makes the ADF stationarity tests cleaner --- the eight price columns go from
+$p\approx 1.0$ to $p<0.0001$ --- and is methodologically correct.
 \end{qa}
 
-\begin{qa}{You split 70/15/15 by time — why not k-fold cross-validation?}
+\begin{qa}{You split 70/15/15 by time --- why not k-fold cross-validation?}
 K-fold shuffles time, so the model would train on the future and validate on the
-past — forward-looking bias that invalidates any out-of-sample claim. Financial
+past --- forward-looking bias that invalidates any out-of-sample claim. Financial
 data is time-ordered; forward chaining (train oldest → test newest) honestly
-simulates production.
+simulates production, and it's what makes our test-set Sharpe meaningful.
 \end{qa}
 
 \begin{qa}{Why a 26-week window? Would a different size change the regimes?}
-We tested 13, 26, 39, 52, 65 and 78 weeks and measured the regime flip rate between
-adjacent windows. It stayed near 0.5\% for every size, because slow macro variables
-dominate. We picked 26 weeks ($\approx$ 6 months) as a natural economic half-year
-rather than over-fitting the window to the data.
+A regime is a stretch of time, not a single week, so we need a window. We picked 26
+weeks ($\approx$ 6 months) on economic grounds --- a natural half-year horizon ---
+long enough to smooth single-week noise but short enough to catch a change within a
+quarter or two, rather than over-fitting the window length to the data.
 \end{qa}
 
-\begin{qa}{What would your 13 contract tests catch if someone introduced leakage?}
-The decisive check is that validation/test means \emph{drift away} from zero. If the
-scaler had been fit on all data, every split would have mean $\approx 0$,
-std $\approx 1$. The test requires the validation mean to \emph{not} be near zero —
-proving only training data fit the scaler.
+\begin{qa}{How exactly does your split prevent leakage?}
+The \texttt{StandardScaler} is fit on \emph{training data only} and then applied to
+validation and test. If we had fit it on all data, every split would have mean
+$\approx 0$; instead validation and test means \emph{drift} away from zero, which is
+the visible proof the scaler never saw the future. K-Means and PCA are likewise fit
+on train only.
 \end{qa}
 
 \begin{qa}{Which 8 columns become log returns, and why those?}
-The eight price/index \emph{levels}: equity market (\texttt{\_MKT}), gold
-(\texttt{\_AU}), US dollar (\texttt{\_DXY}), corporate bonds (\texttt{\_LCP}),
-Treasury (\texttt{\_TY}), oil (\texttt{\_OIL}), value (\texttt{\_VA}), growth
-(\texttt{\_GR}). They trend, so they're non-stationary as levels. The other 22 are
-already stationary rates/ratios (yields, CPI, CAPE, unemployment\ldots) so we keep
-them as-is.
+The eight price/index \emph{levels} --- equity market, gold, the dollar, corporate
+bonds, Treasury, oil, and the value/growth series. They trend, so they're
+non-stationary as levels. The other 22 are already stationary rates/ratios (yields,
+CPI, CAPE, unemployment\ldots) so we keep them as-is.
 \end{qa}
 
-\begin{qa}{Could you have added more features?}
-Yes, but we deliberately kept only series available continuously over the full
-1988–2026 span to avoid survivorship bias, and more inputs would enlarge the
-780-dimensional vector and make the AE's compression harder without obviously
-adding regime-relevant signal.
+\begin{qa}{Is 38 years of data enough?}
+It spans multiple business cycles, two major bear markets (2000–02, 2008–09), two
+inflation episodes, and several credit-stress events --- reasonable for studying
+multi-year macro regimes. It is \emph{not} long enough for strong claims about rare
+tail events, which the report explicitly does not make.
 \end{qa}
 
 % --------------------- Person 2 Q&A ----------------------------------
 \setp{p2}{p2l}
-\section{Q\&A — Person 2 (Autoencoder)}
+\section{Q\&A — Person 2 (Autoencoder, §IV–V-B)}
 
 \begin{qa}{Why a fully-connected autoencoder, not an LSTM or Transformer?}
-The input is a fixed-length 26-week window flattened to 780 values. We want the
+The input is a fixed-length 26-week window flattened to 780 values, and we want the
 overall \emph{state} of that window, not a next-step prediction, so order inside the
-window matters less. A dense AE is a natural, efficient baseline; an LSTM or
-Transformer adds complexity we haven't yet shown is needed to beat it.
+window matters less. A dense AE is a natural, efficient baseline; LSTM and
+Transformer variants are listed in the report's future work.
 \end{qa}
 
-\begin{qa}{Why 16 latent dimensions?}
-Two reasons. First, a 10-component PCA already explains 67\% of variance and 16
-explains $\approx$ 71\%, so the effective dimensionality is well below 30. Second,
-an earlier 3-D bottleneck showed \emph{mode collapse} — the encoder pushed
-everything into one region, giving unstable clusters. Widening to 16 fixed that, and
-matching the PCA dimension keeps the comparison fair.
+\begin{qa}{Why 16 latent dimensions --- and how do you justify it?}
+Two reasons in the report. First, the features are highly correlated and a
+16-component PCA already explains $\approx$ 71\% of variance, so effective
+dimensionality is well below 30. Second, the ablation (Table~III) shows 16 gives the
+lowest \emph{test} reconstruction loss (1.20); going to 32 slightly overfits.
+Matching the PCA dimension also keeps the comparison fair.
 \end{qa}
 
 \begin{qa}{What is early stopping and why does it matter here?}
 It monitors validation loss each epoch and keeps the best checkpoint, stopping after
 40 epochs with no improvement. Without it the model keeps memorising the training
-set — training loss falls while validation loss rises. Since we want regime
-structure that generalises across time, we select the model that's best on held-out
-data.
+set --- training loss falls while validation loss rises. Since we want regime
+structure that generalises across time, we select the model best on held-out data.
 \end{qa}
 
 \begin{qa}{Why is the test reconstruction loss (1.20) so much higher than train (0.30)?}
 The test period (2020–2026) includes COVID, the fastest inflation in 40 years, and
-525 bp of Fed hikes in 18 months — combinations the training era (1988–2014) never
-saw together. Higher reconstruction loss means those windows are genuinely novel
-relative to training. We read it as a regime shift, not a failure.
+an aggressive Fed hiking cycle --- combinations the 1988–2014 training era never saw
+together. The high reconstruction loss means those windows are genuinely novel. We
+read it as a regime shift, not a failure --- and the ablation confirms it persists at
+every latent width.
 \end{qa}
 
 \begin{qa}{Why K-Means with K=4? Did you try other K?}
 Honestly, the cluster-validity metrics don't single out K=4 --- silhouette rises
 monotonically from about 0.25 at K=2 to 0.35 at K=8, and the inertia elbow is
 shallow. So K=4 is chosen on \emph{economic} grounds: four states map cleanly to
-easing, inflationary, stress, and a transitional baseline. We deliberately trade a
-little silhouette for interpretability and out-of-sample stability, because larger
-K fragments into clusters that are harder to interpret and less stable OOS.
+easing, inflationary, stress, and a transitional baseline. We trade a little
+silhouette for interpretability and out-of-sample stability, because larger K
+fragments into clusters that are harder to interpret and less stable OOS.
 \end{qa}
 
 \begin{qa}{Why fit K-Means only on training, then predict val/test?}
-Same logic as scaling: we can't use the future to define regimes. Clustering on all
-data would let val/test points move the centroids, leaking future information into
-the labels. Fitting on training only makes val/test assignments true out-of-sample
-predictions.
+Same logic as the scaler: we can't use the future to \emph{define} regimes.
+Clustering on all data would let val/test points move the centroids, leaking future
+information into the labels. Fitting on training only makes val/test assignments true
+out-of-sample predictions.
 \end{qa}
 
-\begin{qa}{Regime 1 has 666 windows — far more than the others. Is that a problem?}
-No — Regime~1 is the common ``baseline'' state, and markets spend most of their time
-in normal conditions, so a large baseline cluster is expected. What matters is that
-the smaller, distinctive regimes (e.g.\ the crisis state) are coherent and stable
-over time, which they are.
-\end{qa}
-
-\begin{qa}{Could this drive a live trading signal today?}
-Not yet. The backtest is profitable and sensible in sample but the test Sharpe is
-negative ($-0.28$) and IC near zero — consistent with the high test reconstruction
-loss. You'd first need to handle the distribution shift, e.g.\ periodic retraining
-or online updating.
+\begin{qa}{The validation period only uses two of the four regimes --- isn't that a bug?}
+No --- and the ablation (Table~III) is the key evidence. The validation window
+collapses to two regimes whether the bottleneck is 2- or 32-dimensional, so it's not
+insufficient capacity; it's a genuine structural shift. The out-of-sample periods
+simply don't exercise the full regime vocabulary learned in training.
 \end{qa}
 
 % --------------------- Person 3 Q&A ----------------------------------
 \setp{p3}{p3l}
-\section{Q\&A — Person 3 (PCA \& Interpretation)}
+\section{Q\&A — Person 3 (PCA, Strategy \& Limits, §V-C–VIII)}
 
 \begin{qa}{What does ``ARI = 0.52'' actually mean?}
 The Adjusted Rand Index measures how often both methods agree on whether two windows
 are in the same regime, corrected for chance: 1 = perfect, 0 = random. At 0.52 they
-share real structure but disagree on about half the cases — where they agree, they
-capture the same signal; where they differ, the AE's non-linearity groups things
+share real structure but disagree on about half the boundaries --- where they agree
+the signal is the same; where they differ, the AE's non-linearity groups things
 differently than linear PCA.
 \end{qa}
 
-\begin{qa}{Is 71\% variance in 16 components ``enough''?}
-For regime detection it appears sufficient — the agreement heatmap shows each PCA
-regime has a clear majority overlap with an AE regime, so they share the dominant
-structure. The discarded $\approx$ 29\% may hold the non-linear interactions the AE
-uses to refine boundaries; whether that refinement is economically meaningful is
-exactly what the ARI/NMI quantify.
+\begin{qa}{If much of the structure is linear, was the autoencoder worth it?}
+That's exactly the honest tension the report names. The AE adds something --- ARI is
+well below 1, so it finds boundaries PCA can't --- but with 71\% of variance already
+linear, the gain is \emph{modest}. The contribution is the rigorous, fair comparison
+that quantifies how much non-linearity actually buys, rather than assuming a neural
+net is better.
 \end{qa}
 
 \begin{qa}{How do you know the regime labels map to real economic states?}
-From the mean standardised feature values per regime. A regime with high CPI and
-rising 10-year yields, whose windows cluster around known inflationary periods, is a
-consistent story. We cross-checked the crisis regime against recession dates and
-found strong overlap. These are reasoned inferences, not ground truth — none exists
-for unlabelled regimes.
+From the mean standardised feature values per regime (Table~IV) plus the timeline. A
+regime with high CPI and rising 10-year yields, whose windows cluster around known
+inflationary periods, is a consistent story; the crisis regime overlaps known
+recession dates. These are reasoned inferences, not ground truth --- none exists for
+unlabelled regimes.
 \end{qa}
 
-\begin{qa}{Why does the test period look dominated by one or two regimes?}
-2020–2026 is exceptional — COVID, the reopening boom, the sharpest hiking cycle in
-decades. The training era saw those ingredients separately but never in this
-sequence, so the model may be pushing genuinely novel windows into the nearest
-training-era cluster rather than naming a new state.
+\begin{qa}{Walk me through the trading strategy --- is this a real backtest?}
+It's a deliberately simple \emph{diagnostic}, not a deployable strategy. We rank the
+four regimes by average forward return \emph{in training}, go long the best and short
+the worst, freeze that rule, and apply it unchanged to val/test. In sample Sharpe is
+0.23; out of sample it's 0.13 then $-0.28$ on test, losing to buy-and-hold. There's
+no position sizing, transaction costs, or risk management --- it only asks whether the
+regimes carry \emph{directional} information.
 \end{qa}
 
-\begin{qa}{Why use t-SNE for the 2-D/3-D plots instead of just PC1 vs.\ PC2?}
-Both representations are 16-dimensional. Plotting only the first two or three axes
-would throw away most of the information and could exaggerate or hide separation.
-t-SNE collapses all 16 dimensions to 2 or 3 while preserving local neighbourhood
-structure — a more honest picture of how regimes actually sit in the latent space.
+\begin{qa}{Why does the strategy work in sample but fail out of sample?}
+By construction it's profitable in sample --- the rule is fit to the training
+ranking. The out-of-sample failure lines up with everything else: the high test
+reconstruction loss and the regime collapse all point to a post-2020 structural
+break. A rule frozen on 1988–2014 simply doesn't describe 2020–2026.
 \end{qa}
 
-\begin{qa}{Why interpret regimes from the last week of each window, not the average?}
-The last week is the point in time the label is attached to. Averaging all 26 weeks
-would smear in early-window events no longer relevant at the window's end. The
-last-week snapshot captures the market state at the moment of classification.
+\begin{qa}{Couldn't the failure just be your particular 30 features?}
+We tested that (Table~VII). Retraining on macro-only, on risk/sentiment-only, and on
+the full set, \emph{all three} are profitable in sample yet post a negative test
+Sharpe. So the breakdown is robust to the input choice --- it's the regime signal
+over this period, not the feature set.
 \end{qa}
 
-\begin{qa}{If you had to name one key takeaway, what is it?}
-The ARI of 0.52. It confirms non-linear representation learning finds \emph{different}
-regime structure than the linear baseline — validating the core hypothesis — but the
-substantial overlap also shows a large part of the signal is linear and doesn't need
-a neural network. Honest verdict: the AE adds something, but not everything, over PCA.
+\begin{qa}{Your Sharpe ratios look small --- are they comparable to real strategies?}
+No, and the report flags this. Sharpe and IC are computed on \emph{standardised}
+log-returns, not raw percentage returns, so the magnitudes aren't directly comparable
+to a real percentage-return strategy. The sign- and ranking-based conclusions (in vs.\
+out of sample) are unaffected; the absolute numbers are not the point.
 \end{qa}
 
-\begin{qa}{A ``mixed/transitional'' regime sounds vague — is it useful?}
-Yes, as a null category. Forcing every window into a sharply named regime risks
-over-interpreting noise. A diffuse transitional cluster keeps the other three sharp
-and coherent; those windows are real periods of the market moving between states.
+\begin{qa}{What's the single biggest limitation?}
+The overlapping windows. With a 26-week window and a one-week stride, consecutive
+inputs share 25 of 26 weeks, so the 1365 training windows correspond to far fewer
+\emph{independent} episodes. Effective sample size is much smaller than the row
+count, which inflates apparent regime stability and makes any regime–return
+relationship prone to overfitting.
+\end{qa}
+
+\begin{qa}{If you had more time, what's the first thing you'd change?}
+Add a \textbf{clustering-aware or contrastive term} to the training objective. Right
+now the AE only minimises reconstruction error, so the regimes are a by-product of
+compression rather than optimised for separation or for predicting returns. Closely
+behind: periodic retraining so the regimes adapt instead of being frozen at 2014.
 \end{qa}
 
 % --------------------- Cross-team Q&A --------------------------------
@@ -591,25 +668,41 @@ and coherent; those windows are real periods of the market moving between states
 \section{Q\&A — Cross-Team Questions}
 \setp{amber}{amberl}
 
+\begin{qa}{So what is the one-sentence takeaway of the whole report?}
+Representation learning gives a useful \emph{descriptive} lens on historical market
+regimes --- the autoencoder adds real but modest non-linear value over PCA --- but a
+regime rule frozen on history does not survive the post-2020 structural break, so it
+is not yet a stand-alone investment signal.
+\end{qa}
+
 \begin{qa}{How does any of this connect to real investment decisions?}
-We built a simple proof-of-concept: assign long/short/flat by which regime
-historically preceded the best or worst forward returns. It's profitable in sample
-but doesn't generalise — negative test Sharpe ($-0.28$). We're explicit that, as it
-stands, regime detection here is a research tool, not a tradeable signal.
+That's precisely why we added the trading test in Section~V-E: it converts an
+abstract clustering result into an economic question --- do the regimes precede
+different returns? In sample yes, out of sample no. The honest conclusion is that
+this is a research tool, and a path to an investable version (confirming predictors,
+adaptation) is laid out in future work.
 \end{qa}
 
 \begin{qa}{Why not Hidden Markov Models, the classic regime method?}
 HMMs assume a Markov transition structure and need the number of states and emission
-distributions specified up front. Autoencoders learn the representation purely from
-data without those assumptions — which is precisely the linear-vs-nonlinear
-comparison this project was asked to make. HMMs are a natural extension.
+distributions specified up front. Autoencoders and PCA learn the representation
+purely from data --- which is exactly the linear-vs-non-linear comparison this
+project set out to make. HMMs are a natural extension.
 \end{qa}
 
-\begin{qa}{Is 38 years of data enough to trust the results?}
-It spans multiple business cycles, two major bear markets (2000–02, 2008–09), two
-inflation episodes, and several credit-stress events — reasonable for studying
-multi-year macro regimes. It is \emph{not} long enough for strong claims about very
-rare tail events, which we don't make.
+\begin{qa}{If the strategy loses out of sample, why present it at all?}
+Because a negative result, honestly reported, is the finding. It shows the regimes
+are economically \emph{sensible} in sample (the crisis regime precedes the worst
+returns) and pinpoints \emph{where} generalisation breaks --- the post-2020 regime
+shift --- which is far more useful than a cherry-picked in-sample Sharpe.
+\end{qa}
+
+\begin{qa}{Is the whole pipeline reproducible?}
+Yes --- fixed random seed, train-only fitting at every stage, and a documented
+data handoff, so the figures and tables in the report regenerate end to end. The
+trading and signal-robustness results come from scripts in the
+\texttt{trading-strategy/} folder that read the same frozen windows and regime
+labels.
 \end{qa}
 
 \vspace{10pt}
