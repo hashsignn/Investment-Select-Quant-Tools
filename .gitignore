@@ -1,0 +1,21 @@
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.pdf
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated trading-strategy outputs (reproducible by running the scripts).
+# signal_set_comparison.csv is kept as the source for Table VII in the report.
+trading-strategy/outputs/regime_forward_returns.csv
+trading-strategy/outputs/strategy_results.csv
+trading-strategy/outputs/position_rule.csv
