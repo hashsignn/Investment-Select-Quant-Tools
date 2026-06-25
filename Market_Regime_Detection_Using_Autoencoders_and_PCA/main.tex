@@ -557,11 +557,11 @@ well in sample (train MSE $0.619$) yet stays nearly flat across splits
 volatility-based features. Second, and more importantly, the economic verdict is
 unchanged regardless of the input set: every configuration is profitable in sample
 (train Sharpe $0.30$--$0.44$) but loses money out of sample, with a negative test
-Sharpe in all three cases.\footnote{The Full row is retrained inline under the
-comparison protocol rather than loaded from the handoff checkpoint of
-Section~\ref{sec:strategy}; its in-sample Sharpe therefore differs slightly from
-Table~\ref{tab:strategy-results} ($0.33$ versus $0.23$), but the out-of-sample
-test Sharpe ($-0.28$) is reproduced.} The out-of-sample breakdown is therefore not
+Sharpe in all three cases. Note that the Full row in Table~\ref{tab:signals} is
+retrained inline under the comparison protocol rather than loaded from the handoff
+checkpoint of Section~\ref{sec:strategy}; its in-sample Sharpe therefore differs
+slightly ($0.33$ versus $0.23$ in Table~\ref{tab:strategy-results}), but the
+out-of-sample test Sharpe ($-0.28$) is reproduced exactly. The out-of-sample breakdown is therefore not
 an artifact of one particular feature selection --- it is a robust property of
 regime-conditioned trading over this sample, consistent with the structural shift
 documented in Sections~\ref{sec:ablation} and~\ref{sec:strategy}.
