@@ -231,6 +231,7 @@ attributed primarily to the representation method rather than to dimensionality.
 PCA is fitted on the training windows only and applied to all partitions.
 
 \subsection{Clustering and Regime Identification}
+\label{sec:clustering}
 
 After dimensionality reduction, regimes are identified with K-Means~\cite{lloyd1982least}. The latent
 variables are standardized so each dimension contributes equally, and the
@@ -458,10 +459,11 @@ validation Sharpe ratio is positive but modest ($0.13$) and IC is slightly
 negative ($-0.02$), but on the test partition the strategy loses money relative
 to a flat position, with a Sharpe ratio of $-0.28$ and an IC indistinguishable
 from zero. A simple buy-and-hold benchmark over the same out-of-sample period
-slightly outperforms the regime-conditioned strategy on test. While the expanded
-16-dimensional architecture successfully resolved the validation mode collapse,
-the strategy's failure in the test set supports the theory that the post-2020
-era represents an unprecedented regime shift that fundamentally altered market behavior.
+slightly outperforms the regime-conditioned strategy on test. The validation period consistently collapses to two active regimes regardless of latent
+dimensionality (see ablation, Table~\ref{tab:ablation}), suggesting the mode collapse
+reflects structural change in the data rather than insufficient model capacity.
+The strategy's failure in the test set supports the view that the post-2020
+era represents a distributional shift not captured by training-period regime structure.
 
 We therefore do not consider the current regime signal a reliable basis for
 investment on its own. The in-sample relationship between regime and forward
@@ -574,7 +576,7 @@ sample period and are sensitive to hyperparameter choices, particularly the
 latent dimensionality and the number of clusters. K-Means assumes roughly convex,
 comparably sized clusters, which may not match the true regime geometry, and the
 choice of four clusters is motivated by interpretability rather than by an
-internal cluster-validity optimum (Section~\ref{sec:strategy}). The latent
+internal cluster-validity optimum (Section~\ref{sec:clustering}). The latent
 dimensions are not directly interpretable as economic quantities.
 
 Three further caveats deserve emphasis. First, the windows overlap heavily: with
