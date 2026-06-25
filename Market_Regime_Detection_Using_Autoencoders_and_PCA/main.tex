@@ -474,6 +474,68 @@ distinct periods into a single regime, or use the regime as one input among
 several in a more conventional return-forecasting model rather than as a
 standalone signal.
 
+\subsection{Robustness to the Choice of Input Signals}
+\label{sec:signals}
+
+A natural objection is that the out-of-sample failure of the regime signal might
+be an artifact of the particular 30-feature input set rather than a property of
+regime-conditioned trading itself. To test this, we retrain the autoencoder under
+an identical architecture, optimizer, seed, and clustering protocol on three
+different input feature sets and re-run the full pipeline of
+Section~\ref{sec:strategy} --- training, clustering, rule derivation on training
+data only, and out-of-sample evaluation --- separately for each:
+\begin{itemize}
+  \item \textbf{Set A (macro cycle, 10 features):} GDP, CPI, M2, unemployment,
+        consumer confidence, and the principal interest-rate and yield series.
+  \item \textbf{Set B (risk and sentiment, 10 features):} the equity market
+        factor, the MOVE volatility index, dividend yield, yield-spread stress,
+        and the traded price series (credit, Treasury, oil, gold, dollar).
+  \item \textbf{Full (all 30 features):} the main paper configuration.
+\end{itemize}
+Because each model is trained from scratch with the same seed and the position
+rule is re-derived from training data only, the three configurations in
+Table~\ref{tab:signals} are directly comparable.
+
+\begin{table*}[t]
+\centering
+\caption{Robustness of the regime-conditioned strategy to the choice of input
+signals. Each autoencoder is retrained from scratch under identical settings on
+a different feature subset; the long/flat/short rule is re-derived on training
+data only and evaluated out of sample. Sharpe ratios are annualized; the test IC
+is the Spearman rank correlation between the assigned position and the realized
+forward return on the test split.}
+\label{tab:signals}
+\begin{tabular}{lccccccc}
+\toprule
+ & \multicolumn{3}{c}{Reconstruction MSE} & \multicolumn{3}{c}{Strategy Sharpe} & Test \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Signal set & Train & Val & Test & Train & Val & Test & IC \\
+\midrule
+Set A (macro, 10 feat.)          & 0.029 & 0.448 & 0.973 & 0.30 & $-0.62$           & $-0.05$ & $-0.00$ \\
+Set B (risk/sentiment, 10 feat.) & 0.619 & 0.629 & 0.653 & 0.44 & $-0.44$           & $-0.33$ & $-0.05$ \\
+Full (all 30 feat.)              & 0.303 & 0.612 & 1.197 & 0.33 & $\phantom{-}0.00$ & $-0.28$ & $-0.07$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Two patterns stand out. First, reconstruction quality is highly sensitive to the
+feature mix. The macro-only Set~A reconstructs its smooth, slow-moving inputs
+almost perfectly in sample (train MSE $0.029$) but degrades sharply out of sample
+(test MSE $0.973$), whereas the noisier risk/sentiment Set~B reconstructs less
+well in sample (train MSE $0.619$) yet stays nearly flat across splits
+($0.619 \rightarrow 0.653$), reflecting the greater stationarity of return- and
+volatility-based features. Second, and more importantly, the economic verdict is
+unchanged regardless of the input set: every configuration is profitable in sample
+(train Sharpe $0.30$--$0.44$) but loses money out of sample, with a negative test
+Sharpe in all three cases.\footnote{The Full row is retrained inline under the
+comparison protocol rather than loaded from the handoff checkpoint of
+Section~\ref{sec:strategy}; its in-sample Sharpe therefore differs slightly from
+Table~\ref{tab:strategy-results} ($0.33$ versus $0.23$), but the out-of-sample
+test Sharpe ($-0.28$) is reproduced.} The out-of-sample breakdown is therefore not
+an artifact of one particular feature selection --- it is a robust property of
+regime-conditioned trading over this sample, consistent with the structural shift
+documented in Sections~\ref{sec:ablation} and~\ref{sec:strategy}.
+
 \subsection{Discussion}
 
 Both methods recover interpretable market structure, but the moderate agreement
@@ -495,7 +557,12 @@ regime-return relationship is exactly what the feature profiles in
 Table~\ref{tab:regimes} would predict, which is reassuring evidence that the
 unsupervised regimes are not arbitrary. However, the strategy's failure to
 generalize to the test period highlights the massive structural break introduced
-by post-2020 market conditions. This suggests that while 16 dimensions are enough
+by post-2020 market conditions. Section~\ref{sec:signals} shows that this failure
+is robust to the choice of input signals: macro-only, risk/sentiment-only, and
+the full feature set all yield strategies that are profitable in sample yet post a
+negative test Sharpe, so the breakdown is a property of the regime signal over
+this period rather than of one particular feature selection. This suggests that
+while 16 dimensions are enough
 to capture the structure of the historical training period, historical models of
 any capacity struggle to generalize across true, unprecedented regime shifts.
 
