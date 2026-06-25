@@ -49,17 +49,17 @@ Identifying such regimes is an important task in quantitative finance.
 Knowledge of the prevailing market environment can support portfolio
 allocation, risk management, asset pricing, and investment decision-making.
 Traditional approaches to regime detection rely on predefined economic
-indicators, statistical models such as Hidden Markov Models, or dimensionality
+indicators, statistical models such as Hidden Markov Models~\cite{hamilton1989new,ang2002regime}, or dimensionality
 reduction techniques. One of the most widely used methods is Principal Component
-Analysis (PCA), which projects high-dimensional financial data onto a small set
+Analysis (PCA)~\cite{stock2002forecasting}, which projects high-dimensional financial data onto a small set
 of linear factors. While PCA is effective and interpretable, its linear nature
 may limit its ability to capture the nonlinear relationships often present in
 financial markets.
 
 Recent advances in representation learning offer new ways to uncover hidden
-structure directly from data. Autoencoders, in particular, learn compact latent
+structure directly from data~\cite{bengio2013representation}. Autoencoders, in particular, learn compact latent
 representations by compressing inputs through a bottleneck and reconstructing
-them. This allows them to capture nonlinear dependencies that are not accessible
+them~\cite{hinton2006reducing,rumelhart1986learning}. This allows them to capture nonlinear dependencies that are not accessible
 to linear methods, providing a data-driven route to identifying market
 structure without relying solely on predefined assumptions.
 
@@ -91,18 +91,18 @@ macroeconomic conditions.
 
 \textit{Market regime detection} aims to identify periods with distinct market
 dynamics, such as varying levels of volatility, trend, and risk. Established
-approaches include statistical models, Hidden Markov Models, clustering
-techniques, and factor-based methods.
+approaches include statistical models, Hidden Markov Models~\cite{hamilton1989new,nystrup2017regime}, clustering
+techniques~\cite{procacci2021portfolio}, and factor-based methods~\cite{fama1993common}.
 
 \textit{Dimensionality reduction in finance} is widely used to uncover hidden
 structure in high-dimensional datasets. PCA is among the most common methods for
-extracting dominant market factors and is a natural linear baseline for this
+extracting dominant market factors~\cite{stock2002forecasting,guidolin2007asset} and is a natural linear baseline for this
 study.
 
 \textit{Autoencoders for financial time series} extend dimensionality reduction
 to the nonlinear setting. Unlike PCA, autoencoders can model nonlinear
 relationships and have been applied to anomaly detection, feature extraction,
-and representation learning in financial applications.
+and representation learning in financial applications~\cite{kaya2020unsupervised}.
 
 \section{Data and Preprocessing}
 
@@ -117,9 +117,9 @@ as inflation, unemployment, and money supply.
 \subsection{Transformations and Splits}
 
 Eight price and index columns are non-stationary as raw levels (augmented
-Dickey--Fuller $p \approx 0.18$--$1.0$) and are converted to log-returns, after
+Dickey--Fuller~\cite{dickey1979distribution} $p \approx 0.18$--$1.0$) and are converted to log-returns~\cite{campbell1997econometrics}, after
 which all eight become strongly stationary ($p < 0.0001$). The data is then
-split chronologically using forward chaining, with the training partition being
+split chronologically using forward chaining~\cite{lopez2018advances}, with the training partition being
 the oldest and the test partition the most recent, so that no future information
 leaks into the past:
 \begin{itemize}
@@ -161,7 +161,7 @@ are interpreted as market regimes and analyzed from a financial perspective.
 
 \subsection{Autoencoder Architecture}
 
-The primary model is a feed-forward autoencoder implemented in PyTorch. An
+The primary model is a feed-forward autoencoder implemented in PyTorch~\cite{paszke2019pytorch}. An
 autoencoder consists of an encoder that maps the input to a compressed latent
 code and a decoder that reconstructs the input from that code. By minimizing the
 reconstruction error, the network is forced to retain the most informative
@@ -196,7 +196,7 @@ squared reconstruction error,
 \mathrm{MSE} = \frac{1}{n}\sum_{i=1}^{n}(x_i - \hat{x}_i)^2,
 \]
 where $x_i$ is the original input and $\hat{x}_i$ its reconstruction.
-Optimization uses Adam on mini-batches. Because financial data is noisy and
+Optimization uses Adam~\cite{kingma2014adam} on mini-batches. Because financial data is noisy and
 prone to overfitting, several regularization mechanisms are applied: weight
 decay penalizes large parameters, a validation set monitors generalization, and
 early stopping retains the model with the lowest validation loss. The main
@@ -232,7 +232,7 @@ PCA is fitted on the training windows only and applied to all partitions.
 
 \subsection{Clustering and Regime Identification}
 
-After dimensionality reduction, regimes are identified with K-Means. The latent
+After dimensionality reduction, regimes are identified with K-Means~\cite{lloyd1982least}. The latent
 variables are standardized so each dimension contributes equally, and the
 algorithm partitions observations into four clusters. To avoid leakage, K-Means
 is fitted on the training latent vectors only and then used to assign regimes to
@@ -329,7 +329,8 @@ between the two regime assignments, measured on the full dataset, is
 \[
 \mathrm{ARI} = 0.515, \qquad \mathrm{NMI} = 0.577,
 \]
-which is moderate: the methods share substantial structure but differ in
+which is moderate: the adjusted Rand index~\cite{hubert1985comparing} and normalized mutual
+information~\cite{vinh2010information} indicate the methods share substantial structure but differ in
 boundary placement, consistent with the autoencoder capturing nonlinear patterns
 that PCA cannot represent even in 16 components.
 
@@ -650,7 +651,6 @@ or dynamic adaptation rather than just wider bottlenecks.
 Overall, the results support representation learning as a useful, if not
 yet decisive, tool for characterizing financial market regimes.
 
-\nocite{*}
 \bibliographystyle{IEEEtran}
 \bibliography{mybibfile}
 
