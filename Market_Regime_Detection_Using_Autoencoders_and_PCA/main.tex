@@ -177,6 +177,19 @@ Restricting it to 16 dimensions forces the model to compress information and
 learn the most important characteristics of market behavior while mitigating
 the severe mode collapse often seen in overly narrow architectures.
 
+We deliberately adopt a feed-forward autoencoder rather than a recurrent
+(LSTM~\cite{hochreiter1997long}), convolutional~\cite{bai2018empirical}, or
+attention-based~\cite{vaswani2017attention} alternative. The task here is
+unsupervised: rather than forecasting the next step from a sequence, we compress
+the joint distribution of an entire 26-week window into a single latent code. A
+feed-forward encoder operating on the flattened window treats all time steps
+jointly and is well matched to this compression objective, whereas recurrent and
+convolutional architectures are designed primarily for supervised next-step
+prediction and add sequential inductive biases and parameters that a
+reconstruction task does not require. This keeps the model parsimonious and the
+latent space directly comparable to the linear PCA baseline, which also operates
+on the same flattened window.
+
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{autoencoder_architecture.png}
@@ -333,7 +346,12 @@ between the two regime assignments, measured on the full dataset, is
 which is moderate: the adjusted Rand index~\cite{hubert1985comparing} and normalized mutual
 information~\cite{vinh2010information} indicate the methods share substantial structure but differ in
 boundary placement, consistent with the autoencoder capturing nonlinear patterns
-that PCA cannot represent even in 16 components.
+that PCA cannot represent even in 16 components. We interpret this gap with some
+caution: part of the disagreement could arise from the algorithmic variance of
+K-Means itself --- different initializations can shift cluster boundaries even on
+a fixed representation --- rather than purely from the linear/nonlinear
+distinction. Cleanly separating these two sources would require a
+same-representation clustering-stability baseline, which we leave to future work.
 
 \begin{figure}[t]
   \centering
@@ -459,7 +477,15 @@ validation Sharpe ratio is positive but modest ($0.13$) and IC is slightly
 negative ($-0.02$), but on the test partition the strategy loses money relative
 to a flat position, with a Sharpe ratio of $-0.28$ and an IC indistinguishable
 from zero. A simple buy-and-hold benchmark over the same out-of-sample period
-slightly outperforms the regime-conditioned strategy on test. The validation period consistently collapses to two active regimes regardless of latent
+slightly outperforms the regime-conditioned strategy on test. These figures
+should be read with statistical caution: with roughly $270$ weekly observations
+in each out-of-sample split, the standard error of an annualized Sharpe
+ratio~\cite{lo2002statistics} is approximately $0.44$, so none of the reported
+out-of-sample Sharpe ratios is statistically distinguishable from zero. The
+out-of-sample results are therefore directionally suggestive --- the sign of the
+test Sharpe is negative across every configuration we try --- rather than a
+precise estimate of strategy performance. The validation period consistently
+collapses to two active regimes regardless of latent
 dimensionality (see ablation, Table~\ref{tab:ablation}), suggesting the mode collapse
 reflects structural change in the data rather than insufficient model capacity.
 The strategy's failure in the test set supports the view that the post-2020
