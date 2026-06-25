@@ -201,22 +201,22 @@ To test whether the regimes carry economic value rather than just descriptive st
 
 ```text
 Regime   Mean forward return (train)   Position
-1        +0.074                        Long (+1)
-2        +0.034                        Flat (0)
-0        +0.001                        Flat (0)
-3        −0.057                        Short (−1)
+1        +0.032                        Long (+1)
+2        +0.030                        Flat (0)
+0        −0.022                        Flat (0)
+3        −0.069                        Short (−1)
 ```
 
 **Backtest results (Sharpe annualized, weekly returns, √52 scaling; IC = Spearman rank correlation between position and realized forward return):**
 
 ```text
 Split               Strategy Sharpe   Buy-and-hold Sharpe   IC
-Train (in-sample)   0.29              0.00                  0.05
-Validation (OOS)    0.15              -0.02                 0.10
-Test (OOS)          -0.24             0.07                  -0.04
+Train (in-sample)   0.23              0.00                  0.03
+Validation (OOS)    0.13              -0.02                 -0.02
+Test (OOS)          -0.28             0.07                  -0.04
 ```
 
-**Verdict:** the strategy is profitable and economically coherent in sample (the regime with elevated unemployment and volatility precedes the lowest forward returns, the low-volatility regime precedes the highest), but it does **not** generalize: on test it loses to a flat buy-and-hold benchmark, and IC drops to indistinguishable from zero. This tracks the same generalization gap seen elsewhere in this README — the validation-period regime collapse and the elevated test reconstruction loss both point to the same three-dimensional bottleneck struggling outside the training period. We would not recommend this as a stand-alone investment signal in its current form.
+**Verdict:** the strategy is profitable and economically coherent in sample (the regime with elevated unemployment and volatility precedes the lowest forward returns, the low-volatility regime precedes the highest), but it does **not** generalize: on test it loses to a flat buy-and-hold benchmark, and IC drops to indistinguishable from zero. This tracks the same generalization gap seen elsewhere in this README — the validation-period regime collapse (validation falls to only 2 of the 4 regimes, and the test set contains no regime-2 windows) and the elevated test reconstruction loss both point to the same 16-dimensional bottleneck struggling outside the training period. We would not recommend this as a stand-alone investment signal in its current form.
 
 **Caveat on units:** Sharpe and IC above are computed on the *standardized* `_MKT` values (the StandardScaler-transformed log-return, not the raw percentage return), since reproducing this analysis from scratch without `scaler.pkl` doesn't give back the original scale. IC and the sign/ranking-based comparisons are unaffected by this, but if you want Sharpe in actual percentage-return terms, inverse-transform `_MKT` with `scaler.pkl` first.
 
