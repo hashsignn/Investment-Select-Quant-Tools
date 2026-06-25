@@ -234,8 +234,11 @@ because slow macro signals dominate. So I chose \textbf{26 weeks} ($\approx$ 6
 months) on economic grounds — a natural half-year horizon. The training tensor is
 $1365 \times 26 \times 30$: 1365 overlapping windows, each 26 weeks of 30 features.
 
-I packaged everything — windows, scaler, schema, metadata — into one handoff folder
-Eleni could load in two lines of Python and start training immediately.
+One honest caveat we flag in the report: because the windows overlap by 25 of 26
+weeks, those 1{,}365 windows are far fewer \emph{independent} economic episodes
+than the count suggests — Adene will return to what that means for our results.
+The output is a clean, leak-free, reproducible dataset that both my teammates
+built directly on.
 \end{cue}
 
 \begin{cue}{Hand over}{10 sec}
@@ -257,6 +260,7 @@ Latent \textbf{16-D} \;$\cdot$\;
 Adam, weight decay \textbf{5e-4}, early stopping (patience 40), $\le$200 epochs \;$\cdot$\;
 Recon loss \textbf{train 0.30 / val 0.61 / test 1.20} \;$\cdot$\;
 KMeans \textbf{K=4} (fit on train latent only).\\[3pt]
+Ablation: 16-D gives \textbf{lowest test loss}; OOS regime collapse persists at every width.\\[3pt]
 Regime counts (full data): \textbf{R0 = 379, R1 = 666, R2 = 345, R3 = 521}.
 \end{numbers}
 
@@ -281,28 +285,40 @@ compresses through three layers — 256, then 64, then a \textbf{16-dimensional
 bottleneck} — with ReLU activations. The decoder mirrors that back up to 780. We
 reconstruct the window and use \textbf{mean squared error} as the loss.
 
-Why 16 dimensions? Harjot's analysis showed a 10-component PCA already explains
-67\% of variance, and many features are strongly correlated — 11 pairs above 0.8.
-So the 30 inputs carry far fewer independent dimensions; 16 is a meaningful
-compression without collapsing the representation. An earlier 3-D bottleneck
-suffered mode collapse, which widening to 16 fixed.
+Why 16 dimensions? The data analysis showed a 10-component PCA already explains
+67\% of variance and many features are strongly correlated — 11 pairs above 0.8 —
+so the 30 inputs carry far fewer independent dimensions. We didn't just assume 16,
+though: we justified it with an ablation, which I'll show in a moment.
 \end{cue}
 
-\begin{cue}{Training \& early stopping}{60 sec}
-I trained with the \textbf{Adam} optimiser and a weight decay of $5\times10^{-4}$
-for regularisation. Crucially, I used \textbf{early stopping} on the validation
-loss — up to 200 epochs, but the best checkpoint is saved when validation stops
-improving. This prevents overfitting to the training period.
+\begin{cue}{Training, early stopping \& reconstruction}{55 sec}
+I trained with the \textbf{Adam} optimiser and weight decay of $5\times10^{-4}$,
+and used \textbf{early stopping} on the validation loss — up to 200 epochs, keeping
+the best checkpoint. This is our main defence against overfitting the training
+period.
 
 Reconstruction loss reached about \textbf{0.30} on train, \textbf{0.61} on
-validation, and \textbf{1.20} on test. The higher test loss reflects genuine
-\textbf{distributional shift}: the test period (2020–2026) includes COVID, the
-post-pandemic inflation surge, and aggressive Fed rate hikes — conditions barely
-present in training. We read this as evidence of a possible regime shift, not a
-model failure.
+validation, and \textbf{1.20} on test. That jump on test is the first important
+result of the paper: it reflects genuine \textbf{distributional shift}. The test
+period, 2020–2026, includes COVID, the post-pandemic inflation surge, and the
+sharpest Fed hiking cycle in decades — conditions barely present in training. We
+read it as evidence of a regime shift, not a model bug.
 \end{cue}
 
-\begin{cue}{Clustering into regimes}{60 sec}
+\begin{cue}{Latent-dimension ablation — why 16, and an honest finding}{60 sec}
+To justify the bottleneck width we retrained the model at 2, 3, 8, 16 and 32
+dimensions. Two findings, both in the paper. First, reconstruction improves up to
+about eight dimensions and then plateaus, and \textbf{16 gives the lowest
+out-of-sample reconstruction loss} — going wider to 32 actually overfits slightly.
+That's our reason for choosing 16. Second, and more interesting: the
+out-of-sample \emph{regime} coverage does \textbf{not} improve with capacity — the
+validation period collapses to only two of the four regimes whether the bottleneck
+is 2- or 32-dimensional. So the collapse isn't a capacity problem we can engineer
+away; it's the data itself shifting out of sample. That honest result sets up
+everything Adene discusses next.
+\end{cue}
+
+\begin{cue}{Clustering into regimes}{50 sec}
 Once trained, I extracted the 16-D latent vector for every window across all
 splits, then applied \textbf{K-Means with K=4}, fitting the cluster centres on the
 \emph{training} latent vectors only and assigning regimes to validation and test.
@@ -332,7 +348,8 @@ Adene used these as her baseline for comparison. Over to her.
 Variance: 10 PC = 67\%, \textbf{16 PC $\approx$ 71\%}, 50 PC = 82\% \;$\cdot$\;
 \textbf{ARI = 0.52}, \textbf{NMI = 0.58} (moderate agreement) \;$\cdot$\;
 PCA train regimes: R0 26.6\%, R1 34.0\%, R2 27.3\%, \textbf{R3 12.1\% (crisis)} \;$\cdot$\;
-Trading Sharpe: \textbf{train 0.23 / val 0.13 / test $-$0.28}.
+Trading Sharpe: \textbf{train 0.23 / val 0.13 / test $-$0.28}.\\[3pt]
+Signal-set ablation (macro / risk / full): \textbf{none positive OOS} — failure is structural, not feature choice.
 \end{numbers}
 
 \begin{cue}{Opening}{20 sec}
@@ -380,15 +397,52 @@ this: Regime~3 clusters around the early-1990s recession, the 2008 crisis, and p
 of the COVID shock.
 \end{cue}
 
-\begin{cue}{Closing}{40 sec}
-To summarise: Harjot built a rigorously leak-free pipeline on 38 years of weekly
-data. Eleni trained a non-linear autoencoder compressing it into 16 dimensions and
-clustered four regimes. I benchmarked that against a linear PCA of identical
-dimensionality, found moderate agreement, and interpreted each regime
-economically. The result is a fully reproducible, end-to-end pipeline for
-unsupervised market regime detection — with honest documentation of where the
-autoencoder adds value over the linear baseline and where it does not yet
-generalise out of sample. Thank you.
+\begin{cue}{Do the regimes pay? The trading test}{55 sec}
+Interpretable regimes are nice, but do they carry \emph{economic} value? We built a
+deliberately simple test: using \textbf{training data only}, rank the regimes by
+their average one-week-forward market return, then go long the best regime, short
+the worst, flat the rest. We freeze that rule and apply it untouched to validation
+and test. In sample it works — Sharpe \textbf{0.23} — and it's economically
+coherent: the high-stress regime precedes the worst returns. But out of sample it
+falls apart: validation Sharpe \textbf{0.13}, and on test \textbf{$-$0.28}, losing
+to a flat buy-and-hold benchmark, with an information coefficient indistinguishable
+from zero.
+\end{cue}
+
+\begin{cue}{Is it the features? Signal-set experiment}{50 sec}
+A natural objection is that we simply picked the wrong features. So we ran a
+\textbf{signal-set ablation}: we retrained the whole pipeline three times — on a
+10-feature \textbf{macro} set, a 10-feature \textbf{risk-and-sentiment} set, and
+the full 30 features. The result is striking: \textbf{none} of the three achieves a
+positive out-of-sample Sharpe. The risk/sentiment set even reconstructs the test
+period best yet trades the worst. This tells us the generalisation failure is a
+\textbf{structural property of the post-2020 period}, not an artefact of feature
+choice — which is exactly what Eleni's latent ablation also implied.
+\end{cue}
+
+\begin{cue}{Limitations \& what we'd improve}{55 sec}
+We're upfront about the limits. The windows overlap heavily — 26-week windows one
+week apart — so our 1{,}365 windows are far fewer \emph{independent} episodes,
+which inflates apparent stability. The autoencoder is trained only to
+\emph{reconstruct}; nothing in its objective rewards separating future returns, so
+good regimes are a by-product, not a target. And the agreement with PCA is only
+moderate — much of the structure is linear, so the neural network's added value is
+real but modest. To improve it, the report points to three concrete directions:
+\textbf{retrain on a rolling window} so the regimes adapt instead of freezing in
+2014; add a \textbf{clustering-aware term} to the loss so the latent space is built
+for regime separation; and add \textbf{transaction costs and position sizing}
+before treating any of this as tradeable.
+\end{cue}
+
+\begin{cue}{Conclusion}{35 sec}
+So, what did the study find? An autoencoder \emph{can} learn interpretable market
+regimes from unlabelled data, and it captures some non-linear structure a linear
+PCA of equal size cannot — but the gain over PCA is modest, and the regimes do not
+yet generalise across a genuine structural break. The honest conclusion of the
+paper is that this is a useful \textbf{descriptive lens} on market history, not a
+ready-to-deploy trading signal — and, importantly, we showed \emph{why}, through
+the reconstruction jump, the regime collapse, and two independent ablations. Thank
+you — we're happy to take questions.
 \end{cue}
 
 \newpage
@@ -584,6 +638,24 @@ a neural network. Honest verdict: the AE adds something, but not everything, ove
 Yes, as a null category. Forcing every window into a sharply named regime risks
 over-interpreting noise. A diffuse transitional cluster keeps the other three sharp
 and coherent; those windows are real periods of the market moving between states.
+\end{qa}
+
+\begin{qa}{Maybe the strategy just used the wrong features — did you check?}
+Yes, that's exactly the signal-set experiment. We retrained the entire pipeline on
+three feature sets: a 10-feature macro set, a 10-feature risk-and-sentiment set,
+and the full 30 features. None achieved a positive out-of-sample Sharpe. Tellingly,
+the risk/sentiment set reconstructed the test period best yet traded the worst. So
+the failure is not about feature selection --- it's a structural break in the
+post-2020 test period that no feature subset escapes.
+\end{qa}
+
+\begin{qa}{What single change would most likely make this generalise?}
+Rolling retraining. Right now the autoencoder and the K-Means centroids are frozen
+at the 2014 training boundary, so a 2020s window is forced onto stale 1990s--2010s
+structure. Periodically refitting on an expanding or rolling window would let the
+latent space and the regimes adapt as the economy changes. After that, adding a
+clustering- or prediction-aware term to the loss so the latent space is optimised
+for something other than pure reconstruction.
 \end{qa}
 
 % --------------------- Cross-team Q&A --------------------------------
