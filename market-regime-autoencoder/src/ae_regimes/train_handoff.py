@@ -150,7 +150,7 @@ def train_autoencoder_with_validation(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Train autoencoder directly from Person 1 handoff windows.npz."
+        description="Train autoencoder directly from Harjot's handoff windows.npz."
     )
     parser.add_argument("--handoff-dir", default="../DATA LAYER", help="Path to handoff folder.")
     parser.add_argument("--output-dir", default="outputs/handoff", help="Directory for outputs.")

@@ -1,6 +1,6 @@
 """
 PCA Market Regime Analysis
-Person 3: PCA implementation, comparison with autoencoder results,
+Adene: PCA implementation, comparison with autoencoder results,
 visualizations, and interpretation of identified market regimes.
 
 Inputs  (from DATA LAYER + market-regime-autoencoder/outputs/handoff/):

@@ -1,15 +1,15 @@
 # Market Regime Autoencoder
 
-This project covers Person 2's part of the assignment:
+This project covers Eleni's part of the assignment:
 
 - train an autoencoder on preprocessed financial time-series features,
 - extract a 16-dimensional latent representation,
 - cluster the latent vectors into market regimes,
 - export results for visualization and interpretation.
 
-The pipeline is intentionally independent from the final OLAT dataset. Until Person 1 provides the cleaned dataset, use the synthetic sample data generator.
+The pipeline is intentionally independent from the final OLAT dataset. Until Harjot provides the cleaned dataset, use the synthetic sample data generator.
 
-## For PCA / Visualization Person
+## For PCA / Visualization (Adene)
 
 Use this file for downstream analysis:
 
@@ -84,7 +84,7 @@ We use a 16-dimensional latent space (widened from an earlier 3-dimensional arch
 
 ## Expected Data Contract
 
-Person 1 should provide a CSV in `data/processed/` with this shape:
+Harjot should provide a CSV in `data/processed/` with this shape:
 
 ```text
 date,feature_1,feature_2,feature_3,...
@@ -132,15 +132,15 @@ Outputs are written to `outputs/`:
 
 ## Run With Final Data
 
-After Person 1 adds the final processed CSV:
+After Harjot adds the final processed CSV:
 
 ```bash
 python -m ae_regimes.train --input data/processed/final_features.csv --epochs 300 --clusters 4
 ```
 
-## Run With Person 1 Handoff
+## Run With Harjot's Handoff
 
-If Person 1 provides the data layer files `windows.npz`, `splits.npz`, `schema.json`, `metadata.json`, and `scaler.pkl`, train directly from the handoff folder:
+If Harjot provides the data layer files `windows.npz`, `splits.npz`, `schema.json`, `metadata.json`, and `scaler.pkl`, train directly from the handoff folder:
 
 ```bash
 python -m ae_regimes.train_handoff \

@@ -56,7 +56,7 @@ def main():
         print(f"  [{'PASS' if ok else 'FAIL'}] {name}")
     print(f"\n{npass}/{len(checks)} passed")
     assert npass == len(checks), "HANDOFF CONTRACT FAILED"
-    print("Handoff contract OK — safe to send to Person 2.")
+    print("Handoff contract OK — safe to send to Eleni.")
 
 if __name__ == "__main__":
     main()

@@ -12,7 +12,7 @@ This reproduces Table~\ref{tab:ablation} in the paper. It shows that (1) the
 validation/test regime collapse is a property of the data (regime shift), not of
 the bottleneck width.
 
-Run from the repo root (needs the Person 1 handoff windows):
+Run from the repo root (needs Harjot's handoff windows):
     python market-regime-autoencoder/scripts/latent_dim_ablation.py
 """
 
