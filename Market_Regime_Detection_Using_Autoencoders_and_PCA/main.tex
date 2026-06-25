@@ -24,8 +24,9 @@ feed-forward autoencoder and apply K-Means clustering to identify four market
 regimes. As a benchmark, we compare the result with a Principal Component
 Analysis (PCA) projection of identical dimensionality. Both methods uncover
 interpretable market structures, but they agree only moderately (adjusted Rand
-index $0.52$), indicating that the autoencoder captures nonlinear structure that
-linear PCA cannot reproduce in 16 components. To assess whether the regimes
+index $0.52$), suggesting that the autoencoder may capture nonlinear structure
+beyond a 16-component linear projection, though part of this disagreement could
+also reflect the algorithmic variance of the clustering step. To assess whether the regimes
 carry economic value, we construct a simple regime-conditioned long/short
 trading rule, fixed from training data and evaluated out of sample. The rule is
 profitable and economically sensible in sample but fails to generalize to the
