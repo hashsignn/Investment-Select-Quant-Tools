@@ -3,9 +3,9 @@
 Unsupervised market regime detection using autoencoders and PCA, applied to weekly US financial and macroeconomic data (1988–2026). The repo is organized into four self-contained folders, each owned by a separate pipeline stage.
 
 ```
-DATA LAYER/                   ← pre-processing (Person 1)
-market-regime-autoencoder/    ← autoencoder + KMeans (Person 2)
-pca-regime-analysis/          ← PCA baseline + comparison (Person 3)
+DATA LAYER/                   ← pre-processing (Harjot)
+market-regime-autoencoder/    ← autoencoder + KMeans (Eleni)
+pca-regime-analysis/          ← PCA baseline + comparison (Adene)
 trading-strategy/             ← backtest + signal-set experiment
 ```
 
