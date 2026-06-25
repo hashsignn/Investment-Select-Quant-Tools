@@ -47,18 +47,18 @@ market-regime-autoencoder/outputs/handoff/split_reconstruction_loss.csv
 Current reconstruction losses:
 
 ```text
-train = 0.363349
-val   = 0.634908
-test  = 1.703483
+train = 0.299371
+val   = 0.610532
+test  = 1.204732
 ```
 
 Current regime counts:
 
 ```text
-regime 0 = 402
-regime 1 = 212
-regime 2 = 422
-regime 3 = 875
+regime 0 = 379
+regime 1 = 666
+regime 2 = 345
+regime 3 = 521
 ```
 
 The test reconstruction loss is higher because the test period is the most recent sample, including 2020-2026 market conditions. This should be discussed as a possible regime shift rather than treated as classification accuracy.
@@ -68,9 +68,9 @@ The test reconstruction loss is higher because the test period is the most recen
 The model is a fully connected autoencoder implemented in PyTorch:
 
 - input: one flattened 26-week window with 30 features, so `26 x 30 = 780` inputs,
-- encoder: `Linear(780, 64) -> ReLU -> Linear(64, 3)`,
+- encoder: `Linear(780, 256) -> ReLU -> Linear(256, 64) -> ReLU -> Linear(64, 16)`,
 - latent space: 16 dimensions, `z1` through `z16`,
-- decoder: `Linear(3, 64) -> ReLU -> Linear(64, 780)`,
+- decoder: `Linear(16, 64) -> ReLU -> Linear(64, 256) -> ReLU -> Linear(256, 780)`,
 - objective: mean squared reconstruction error,
 - optimizer: Adam,
 - maximum epochs for the handoff run: 200,
