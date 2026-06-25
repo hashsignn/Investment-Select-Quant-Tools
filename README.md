@@ -258,3 +258,65 @@ for split in ["train", "val", "test"]:
     ic, _ = spearmanr(sub["position"], sub["fwd_return_1w"])
     print(split, "Sharpe:", round(sharpe, 3), "IC:", round(ic, 3))
 ```
+# trading-strategy
+
+Regime-conditioned trading strategy backtest and signal set comparison experiment.
+
+## Files
+
+| File | Description |
+|---|---|
+| `backtest_regimes.py` | Main backtest: derives a long/flat/short rule from the autoencoder regime labels and evaluates it out of sample (Sharpe, IC, hit rate) |
+| `compare_signal_sets.py` | Signal set experiment: trains separate autoencoders on Set A (macro), Set B (risk/sentiment), and all 30 features; compares reconstruction loss and trading performance |
+| `requirements.txt` | Python dependencies |
+| `outputs/` | Generated CSVs (created on first run) |
+
+## Setup
+
+```bash
+cd <repo-root>
+pip install -r trading-strategy/requirements.txt
+pip install -e market-regime-autoencoder --no-build-isolation
+```
+
+## Usage
+
+Run the main backtest (requires `market-regime-autoencoder` outputs):
+
+```bash
+python trading-strategy/backtest_regimes.py
+```
+
+Run the signal set comparison (trains models from scratch, ~2 min):
+
+```bash
+python trading-strategy/compare_signal_sets.py
+```
+
+## Outputs
+
+### `backtest_regimes.py`
+- `outputs/regime_forward_returns.csv` — per-window forward return + regime label
+- `outputs/position_rule.csv` — regime → position mapping derived from train
+- `outputs/strategy_results.csv` — Sharpe / IC / hit rate by split
+
+### `compare_signal_sets.py`
+- `outputs/signal_set_comparison.csv` — reconstruction loss and strategy performance for each signal set
+
+## Methodology
+
+Both scripts follow the same no-leakage discipline:
+
+1. **Forward returns**: window `i`'s one-week-forward market return is the new week added by window `i+1` — the last row of `windows[i+1][:, mkt_idx]`.
+2. **Position rule**: derived from **training data only** (average forward return per regime), then frozen and applied unchanged to validation and test.
+3. **Metrics**: Sharpe ratios are annualised (`× √52`) and computed on StandardScaler-transformed log-returns. To convert to raw percentage-return Sharpe, inverse-transform `_MKT` with `DATA LAYER/scaler.pkl` first.
+
+## Results (paper Table II)
+
+| Signal set | Recon train | Recon test | Train Sharpe | Test Sharpe | Test IC |
+|---|---|---|---|---|---|
+| Set A (macro, 10 feat.) | 0.029 | 0.973 | 0.30 | −0.05 | −0.00 |
+| Set B (risk/sent., 10 feat.) | 0.619 | 0.653 | 0.44 | −0.33 | −0.05 |
+| Full (all 30 feat.) | 0.327 | 1.208 | 0.36 | −0.23 | −0.03 |
+
+None of the three configurations achieves positive out-of-sample Sharpe, confirming that the generalization challenge is a structural property of the post-2020 test period, not an artifact of signal choice.
