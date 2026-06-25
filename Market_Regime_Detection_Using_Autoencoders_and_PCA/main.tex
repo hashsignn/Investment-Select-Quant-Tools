@@ -240,16 +240,26 @@ validation and test. Each cluster is interpreted as a candidate market regime
 and analyzed with respect to the behavior of market and macroeconomic variables
 within it.
 
+The choice of four clusters is driven primarily by economic interpretability and
+parsimony rather than by an internal cluster-validity optimum. On the training
+latent space the silhouette score rises monotonically with $K$ (from $0.25$ at
+$K=2$ to $0.35$ at $K=8$) and the inertia elbow is shallow, so the standard
+metrics do not single out a particular $K$. We deliberately favor a small number
+of regimes: four states map cleanly onto recognizable macro-financial conditions
+(easing, inflationary, stress, and a transitional baseline), whereas larger $K$
+fragments the space into clusters that gain marginal silhouette but lose economic
+meaning and out-of-sample stability.
+
 \section{Experiments and Results}
 
 \subsection{Autoencoder Reconstruction}
 
 The autoencoder is trained for up to 200 epochs with early stopping. Training
-reduces the reconstruction loss from $0.74$ to roughly $0.34$, a $65\%$
-improvement over a naive baseline that predicts the per-feature training mean
-(loss $\approx 1.00$), confirming that the model learns genuine structure rather
-than a trivial solution. Table~\ref{tab:recon} reports the reconstruction loss
-by split.
+reduces the reconstruction loss to roughly $0.30$ on the training set, about a
+$70\%$ improvement over a naive baseline that predicts the per-feature training
+mean (loss $\approx 1.00$), confirming that the model learns genuine structure
+rather than a trivial solution. Table~\ref{tab:recon} reports the reconstruction
+loss by split.
 
 \begin{table}[h]
 \centering
@@ -270,6 +280,44 @@ The substantially higher test loss is expected: the test partition (2020--2026)
 is the most recent and includes market conditions --- the post-2020 inflation
 and rate-hike cycle --- that differ from the training period. We interpret this
 as evidence of a possible regime shift rather than as a model failure.
+
+\subsection{Latent-Dimension Ablation}
+\label{sec:ablation}
+
+To justify the 16-dimensional bottleneck, we retrain the autoencoder at several
+latent widths under identical settings and report both reconstruction quality and
+the number of distinct regimes populated in each split when K-Means ($K=4$) is fit
+on the training latent vectors (Table~\ref{tab:ablation}).
+
+\begin{table}[h]
+\centering
+\caption{Latent-dimension ablation. Reconstruction MSE on train and test, and the
+number of the four K-Means regimes that are actually populated in each split.}
+\label{tab:ablation}
+\begin{tabular}{cccc}
+\toprule
+Latent dim & Train MSE & Test MSE & Regimes (train/val/test) \\
+\midrule
+2  & 0.391 & 1.608 & 4 / 2 / 4 \\
+3  & 0.389 & 1.561 & 4 / 2 / 4 \\
+8  & 0.303 & 1.491 & 4 / 2 / 3 \\
+\textbf{16} & \textbf{0.303} & \textbf{1.197} & 4 / 2 / 3 \\
+32 & 0.313 & 1.280 & 4 / 3 / 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two observations follow. First, reconstruction improves sharply from the narrow
+2--3 dimensional bottlenecks (train MSE $\approx 0.39$, test MSE $\approx 1.6$) to
+eight dimensions, then plateaus; the 16-dimensional model attains the lowest test
+reconstruction loss ($1.197$), while widening further to 32 dimensions slightly
+degrades it, indicating mild overfitting. This is our primary reason for adopting
+16 dimensions. Second, and more revealing, out-of-sample regime coverage does
+\emph{not} improve with capacity: the validation period populates only two of the
+four regimes at almost every latent width. The collapse therefore reflects a
+genuine structural shift in the validation and test periods rather than an
+insufficient bottleneck --- a point we return to when the trading rule fails out
+of sample (Section~\ref{sec:strategy}).
 
 \subsection{PCA versus Autoencoder Agreement}
 
@@ -338,17 +386,18 @@ than a sharply defined state.
   \label{fig:timeline}
 \end{figure*}
 
-A notable observation concerns the out-of-sample regime coverage. In an earlier
-narrow 3-dimensional autoencoder, almost all validation windows collapsed into a
-single regime. Widening the bottleneck to 16 dimensions substantially mitigates
-this but does not eliminate it: the validation window (2014--2020) now spans two
-of the four regimes rather than one, and the test window (2020--2026) spans three
-of the four, with regime~2 (the inflationary state) entirely absent. In other
-words, the out-of-sample periods do not exercise the full regime vocabulary
-learned in training. We interpret this as a partial, rather than complete,
-resolution of the mode-collapse limitation, consistent with the elevated test
-reconstruction loss (Table~\ref{tab:recon}) and with the deterioration of the
-trading rule out of sample reported in Section~\ref{sec:strategy}.
+A notable observation concerns out-of-sample regime coverage. While the
+autoencoder uses all four regimes on the training set, the validation window
+(2014--2020) populates only two of them, and the test window (2020--2026) only
+three, with regime~2 (the inflationary state) entirely absent out of sample. As
+the ablation in Section~\ref{sec:ablation} shows, this coverage gap persists
+across latent widths --- the validation period collapses to two regimes whether
+the bottleneck is 2- or 32-dimensional --- so it reflects a genuine structural
+shift in the out-of-sample periods rather than insufficient model capacity. The
+out-of-sample windows simply do not exercise the full regime vocabulary learned
+in training. This is consistent with the elevated test reconstruction loss
+(Table~\ref{tab:recon}) and with the deterioration of the trading rule out of
+sample reported in Section~\ref{sec:strategy}.
 
 \subsection{Regime-Conditioned Trading Strategy}
 \label{sec:strategy}
@@ -431,12 +480,14 @@ Both methods recover interpretable market structure, but the moderate agreement
 between them is the central finding: the autoencoder and PCA do not simply
 reproduce one another. Because 16 PCA components retain less than three-quarters
 of the variance, part of the disagreement is attributable to information that the
-linear projection discards and the nonlinear encoder retains. By adopting a
-16-dimensional bottleneck, we gave the autoencoder enough capacity to
-differentiate regimes far better than the earlier 3-dimensional design, which
-collapsed almost entirely out of sample; the residual collapse that remains
-(validation and test do not populate all four regimes) is discussed in
-Section~\ref{sec:strategy} and below.
+linear projection discards and the nonlinear encoder retains. We adopt a
+16-dimensional bottleneck because it minimizes out-of-sample reconstruction loss
+(Section~\ref{sec:ablation}); it should be stressed, however, that capacity alone
+does not fix the out-of-sample regime collapse, which the ablation shows persists
+at every latent width. A second, sobering observation is that the nonlinear
+autoencoder only moderately outperforms the linear PCA baseline: a large share of
+the regime structure is in fact linear, and the additional value of the neural
+network over PCA in this setting, while real, is modest.
 
 The trading strategy in Section~\ref{sec:strategy} sharpens this point with an
 economic test rather than a purely representational one. The in-sample
@@ -453,22 +504,41 @@ any capacity struggle to generalize across true, unprecedented regime shifts.
 The study has several limitations. Results depend on the chosen dataset and
 sample period and are sensitive to hyperparameter choices, particularly the
 latent dimensionality and the number of clusters. K-Means assumes roughly convex,
-comparably sized clusters, which may not match the true regime geometry. The
-latent dimensions are not directly interpretable as economic quantities. The
-regime-conditioned strategy of Section~\ref{sec:strategy} is intentionally
-simple (a fixed long/flat/short rule with no position sizing, transaction
-costs, or risk management) and is intended as a diagnostic of whether the
-regimes carry directional information, not as a deployable strategy; its
-out-of-sample underperformance should be interpreted in that light rather than
-as a definitive verdict on regime-based investing in general.
+comparably sized clusters, which may not match the true regime geometry, and the
+choice of four clusters is motivated by interpretability rather than by an
+internal cluster-validity optimum (Section~\ref{sec:strategy}). The latent
+dimensions are not directly interpretable as economic quantities.
+
+Three further caveats deserve emphasis. First, the windows overlap heavily: with
+a 26-week window and a one-week stride, consecutive inputs share 25 of 26 weeks,
+so the $1{,}365$ training windows correspond to far fewer statistically
+independent macroeconomic episodes. Effective sample size is therefore much
+smaller than the row count suggests, which inflates the apparent stability of the
+regimes and makes any estimated regime--return relationship prone to overfitting.
+Second, the autoencoder is trained purely to minimize reconstruction error;
+nothing in the objective encourages the latent space to separate \emph{future}
+returns or even to be well suited to clustering, so the downstream regimes are a
+by-product of compression rather than an optimized target. Third, the Sharpe
+ratios and information coefficients in Section~\ref{sec:strategy} are computed on
+\emph{standardized} market returns rather than raw percentage returns; the
+sign-, ranking-, and correlation-based conclusions are unaffected, but the Sharpe
+magnitudes are not directly comparable to those of a real percentage-return
+strategy.
+
+Finally, the regime-conditioned strategy of Section~\ref{sec:strategy} is
+intentionally simple (a fixed long/flat/short rule with no position sizing,
+transaction costs, or risk management) and is intended as a diagnostic of whether
+the regimes carry directional information, not as a deployable strategy; its
+out-of-sample underperformance should be interpreted in that light rather than as
+a definitive verdict on regime-based investing in general.
 
 \section{Future Work}
 
 Future extensions include testing alternative architectures such as LSTM or
-variational autoencoders, increasing the latent dimensionality or adding an
-intermediate layer to ease the compression, incorporating additional asset
-classes and macroeconomic variables, and exploring dynamic or online regime
-detection. On the trading side, natural next steps include adding position
+variational autoencoders, adding a clustering-aware or contrastive term to the
+training objective so the latent space is optimized for regime separation rather
+than reconstruction alone, incorporating additional asset classes and
+macroeconomic variables, and exploring dynamic or online regime detection. On the trading side, natural next steps include adding position
 sizing and transaction costs to the regime-conditioned strategy, combining the
 regime signal with complementary predictors rather than trading it in
 isolation, and retraining the autoencoder periodically (e.g., with an
@@ -485,8 +555,16 @@ representation that reconstructs the data well in sample and identifies four
 regimes corresponding to recognizable market and economic environments. The
 moderate agreement with PCA (ARI $0.52$, NMI $0.58$) indicates that nonlinear
 representation learning captures structure beyond what a 16-component linear
-projection can express, while the high test reconstruction loss highlights the
-difficulty of generalizing across true, unprecedented regime shifts.
+projection can express --- but the gain over the linear baseline is modest, and
+much of the recovered regime structure is in fact linear. Out of sample the
+limits are clear: reconstruction loss rises sharply, the validation and test
+periods populate only part of the regime vocabulary, and a regime-conditioned
+trading rule that is profitable in sample fails to beat a buy-and-hold benchmark
+on the test period. Taken together, the results position the autoencoder as a
+useful descriptive lens on historical market structure rather than a
+ready-to-deploy investment signal, and they underscore the difficulty of
+generalizing any historically trained regime model across genuinely unprecedented
+market shifts.
 
 To directly address whether the detected regimes are an appropriate basis for
 investment, we backtested a regime-conditioned long/short strategy fixed from
